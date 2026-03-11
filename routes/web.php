@@ -3,5 +3,9 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return response()->json([
+        'app'     => 'Karnetik',
+        'version' => '0.1.0-alpha',
+        'status'  => 'ok',
+    ]);
 });
