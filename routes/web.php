@@ -1,11 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', function () {
-    return response()->json([
-        'app'     => 'Karnetik',
-        'version' => '0.1.0-alpha',
-        'status'  => 'ok',
-    ]);
+    return Inertia::render('Welcome');
 });
