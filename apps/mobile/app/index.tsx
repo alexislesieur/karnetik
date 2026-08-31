@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
+import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
 export default function SplashScreen() {
@@ -36,6 +37,12 @@ export default function SplashScreen() {
       delay: 300,
       useNativeDriver: true,
     }).start();
+
+    const timer = setTimeout(() => {
+      router.replace('/welcome');
+    }, 1500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const badgeRotateInterpolated = badgeRotate.interpolate({
