@@ -23,3 +23,9 @@ Route::post('/email/resend', [
     EmailVerificationController::class,
     'resend',
 ]);
+
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+    ]);
+});
