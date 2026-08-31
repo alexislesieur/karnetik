@@ -50,7 +50,7 @@ export default function WelcomeScreen() {
 
         <Pressable
           style={styles.btnOutline}
-          onPress={() => {}}
+          onPress={() => router.push('/login')}
           accessibilityRole="button"
         >
           <Text style={styles.btnOutlineText}>
