@@ -18,13 +18,46 @@ export default function RootLayout() {
   return (
     <>
       <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="welcome" options={{ headerShown: false }} />
-        <Stack.Screen name="signup" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen
+          name="index"
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="welcome"
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="signup"
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="verify-email"
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="home"
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="(tabs)"
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="modal"
+          options={{
+            presentation: 'modal',
+            title: 'Modal',
+          }}
+        />
       </Stack>
-      <StatusBar style="light" />
+
+      <StatusBar style="dark" />
     </>
   );
 }

@@ -74,7 +74,12 @@ export default function SignupScreen() {
       console.log('Inscription réussie :', response.user);
       console.log('Token reçu :', response.token);
 
-      router.replace('/home');
+      router.replace({
+        pathname: '/verify-email',
+        params: {
+          email: email.trim(),
+        },
+      });
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -205,7 +210,10 @@ export default function SignupScreen() {
               placeholderTextColor="#A9AFAD"
               secureTextEntry={!showPasswordConfirmation}
               value={passwordConfirmation}
-              onChangeText={setPasswordConfirmation}
+              onChangeText={(value) => {
+                setPasswordConfirmation(value);
+                setErrorMessage('');
+              }}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -345,8 +353,13 @@ export default function SignupScreen() {
 function getPasswordStrength(password: string) {
   let score = 0;
 
-  if (password.length >= 6) score++;
-  if (password.length >= 10) score++;
+  if (password.length >= 6) {
+    score++;
+  }
+
+  if (password.length >= 10) {
+    score++;
+  }
 
   if (
     /[0-9]/.test(password) &&
@@ -359,8 +372,14 @@ function getPasswordStrength(password: string) {
 }
 
 function getStrengthColor(strength: number) {
-  if (strength === 1) return Colors.erreur;
-  if (strength === 2) return Colors.avertissement;
+  if (strength === 1) {
+    return Colors.erreur;
+  }
+
+  if (strength === 2) {
+    return Colors.avertissement;
+  }
+
   return Colors.succes;
 }
 
@@ -470,6 +489,7 @@ const styles = StyleSheet.create({
   },
 
   sheet: {
+    flex: 1,
     paddingHorizontal: 28,
     paddingTop: 20,
     paddingBottom: 30,
