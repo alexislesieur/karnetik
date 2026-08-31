@@ -1,23 +1,29 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
+import { register } from '@/api/client';
 
 export default function SignupScreen() {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] =
+    useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] =
     useState(false);
   const [cguAccepted, setCguAccepted] = useState(false);
   const [marketingAccepted, setMarketingAccepted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const passwordsMatch =
     passwordConfirmation.length > 0 &&
@@ -28,6 +34,55 @@ export default function SignupScreen() {
     password !== passwordConfirmation;
 
   const passwordStrength = getPasswordStrength(password);
+
+  async function handleRegister() {
+    setErrorMessage('');
+
+    if (!email.trim()) {
+      setErrorMessage('Veuillez renseigner votre adresse email.');
+      return;
+    }
+
+    if (!password) {
+      setErrorMessage('Veuillez renseigner votre mot de passe.');
+      return;
+    }
+
+    if (password !== passwordConfirmation) {
+      setErrorMessage('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    if (!cguAccepted) {
+      setErrorMessage(
+        'Vous devez accepter les conditions générales pour continuer.',
+      );
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const response = await register({
+        email: email.trim(),
+        password,
+        password_confirmation: passwordConfirmation,
+      });
+
+      console.log('Inscription réussie :', response.user);
+      console.log('Token reçu :', response.token);
+
+      router.replace('/home');
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Une erreur est survenue lors de l’inscription.',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -51,7 +106,9 @@ export default function SignupScreen() {
 
       <View style={styles.sheet}>
         <Text style={styles.title}>Créer un compte</Text>
-        <Text style={styles.subtitle}>Ça prend moins d'une minute</Text>
+        <Text style={styles.subtitle}>
+          Ça prend moins d'une minute
+        </Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>Email</Text>
@@ -63,6 +120,8 @@ export default function SignupScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            value={email}
+            onChangeText={setEmail}
           />
         </View>
 
@@ -83,7 +142,9 @@ export default function SignupScreen() {
 
             <Pressable
               style={styles.eyeButton}
-              onPress={() => setShowPassword((value) => !value)}
+              onPress={() =>
+                setShowPassword((value) => !value)
+              }
               accessibilityRole="button"
               accessibilityLabel={
                 showPassword
@@ -102,7 +163,9 @@ export default function SignupScreen() {
                 style={[
                   styles.strengthBar,
                   index < passwordStrength && {
-                    backgroundColor: getStrengthColor(passwordStrength),
+                    backgroundColor: getStrengthColor(
+                      passwordStrength,
+                    ),
                   },
                 ]}
               />
@@ -111,7 +174,9 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Confirmer le mot de passe</Text>
+          <Text style={styles.label}>
+            Confirmer le mot de passe
+          </Text>
 
           <View
             style={[
@@ -133,7 +198,9 @@ export default function SignupScreen() {
             <Pressable
               style={styles.eyeButton}
               onPress={() =>
-                setShowPasswordConfirmation((value) => !value)
+                setShowPasswordConfirmation(
+                  (value) => !value,
+                )
               }
               accessibilityRole="button"
               accessibilityLabel={
@@ -149,6 +216,7 @@ export default function SignupScreen() {
           {passwordsDoNotMatch && (
             <View style={styles.feedbackRow}>
               <CircleIcon color={Colors.erreur} />
+
               <Text style={styles.errorText}>
                 Les mots de passe ne correspondent pas
               </Text>
@@ -158,6 +226,7 @@ export default function SignupScreen() {
           {passwordsMatch && (
             <View style={styles.feedbackRow}>
               <CircleIcon color={Colors.succes} check />
+
               <Text style={styles.successText}>
                 Les mots de passe correspondent
               </Text>
@@ -167,7 +236,9 @@ export default function SignupScreen() {
 
         <Pressable
           style={styles.consent}
-          onPress={() => setCguAccepted((value) => !value)}
+          onPress={() =>
+            setCguAccepted((value) => !value)
+          }
           accessibilityRole="checkbox"
           accessibilityState={{ checked: cguAccepted }}
         >
@@ -185,40 +256,59 @@ export default function SignupScreen() {
           </Text>
         </Pressable>
 
-        {!cguAccepted && (
-          <Text style={styles.consentError}>
-            Cochez cette case pour continuer
-          </Text>
-        )}
-
         <Pressable
           style={styles.consent}
-          onPress={() => setMarketingAccepted((value) => !value)}
+          onPress={() =>
+            setMarketingAccepted((value) => !value)
+          }
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: marketingAccepted }}
+          accessibilityState={{
+            checked: marketingAccepted,
+          }}
         >
           <Checkbox checked={marketingAccepted} />
 
           <Text style={styles.consentText}>
-            J'accepte de recevoir des conseils d'entretien et actualités
-            Karnetik par email{' '}
-            <Text style={styles.optional}>(facultatif)</Text>
+            J'accepte de recevoir des conseils d'entretien et
+            actualités Karnetik par email{' '}
+            <Text style={styles.optional}>
+              (facultatif)
+            </Text>
           </Text>
         </Pressable>
 
+        {errorMessage !== '' && (
+          <Text style={styles.formError}>
+            {errorMessage}
+          </Text>
+        )}
+
         <Pressable
-          style={styles.primaryButton}
-          onPress={() => {}}
+          style={[
+            styles.primaryButton,
+            isLoading && styles.primaryButtonDisabled,
+          ]}
+          onPress={handleRegister}
+          disabled={isLoading}
           accessibilityRole="button"
+          accessibilityState={{
+            disabled: isLoading,
+          }}
         >
-          <Text style={styles.primaryButtonText}>Créer mon compte</Text>
+          {isLoading ? (
+            <ActivityIndicator color={Colors.surface} />
+          ) : (
+            <Text style={styles.primaryButtonText}>
+              Créer mon compte
+            </Text>
+          )}
         </Pressable>
 
         <Text style={styles.switchLine}>
           Déjà un compte ?{' '}
           <Text
             style={styles.switchLink}
-            onPress={() => router.push('/login')}
+            onPress={() => {}}
           >
             Se connecter
           </Text>
@@ -233,7 +323,12 @@ function getPasswordStrength(password: string) {
 
   if (password.length >= 6) score++;
   if (password.length >= 10) score++;
-  if (/[0-9]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (
+    /[0-9]/.test(password) &&
+    /[A-Z]/.test(password)
+  ) {
+    score++;
+  }
 
   return score;
 }
@@ -253,6 +348,7 @@ function EyeIcon() {
         stroke={Colors.attenue}
         strokeWidth={2}
       />
+
       <Circle
         cx="12"
         cy="12"
@@ -304,7 +400,12 @@ function CircleIcon({
 
 function Checkbox({ checked }: { checked: boolean }) {
   return (
-    <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+    <View
+      style={[
+        styles.checkbox,
+        checked && styles.checkboxChecked,
+      ]}
+    >
       {checked && (
         <Svg width={12} height={12} viewBox="0 0 24 24">
           <Path
@@ -487,13 +588,12 @@ const styles = StyleSheet.create({
     color: Colors.attenue,
   },
 
-  consentError: {
+  formError: {
     fontFamily: 'Roboto_400Regular',
-    fontSize: 11,
+    fontSize: 13,
+    lineHeight: 18,
     color: Colors.erreur,
-    marginTop: -7,
-    marginBottom: 11,
-    marginLeft: 29,
+    marginBottom: 10,
   },
 
   primaryButton: {
@@ -503,6 +603,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 6,
+  },
+
+  primaryButtonDisabled: {
+    opacity: 0.7,
   },
 
   primaryButtonText: {
