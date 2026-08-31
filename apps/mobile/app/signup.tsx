@@ -7,12 +7,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { register } from '@/api/client';
 
 export default function SignupScreen() {
+  const insets = useSafeAreaInsets();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] =
@@ -24,6 +27,7 @@ export default function SignupScreen() {
   const [marketingAccepted, setMarketingAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [cguError, setCguError] = useState(false);
 
   const passwordsMatch =
     passwordConfirmation.length > 0 &&
@@ -37,6 +41,7 @@ export default function SignupScreen() {
 
   async function handleRegister() {
     setErrorMessage('');
+    setCguError(false);
 
     if (!email.trim()) {
       setErrorMessage('Veuillez renseigner votre adresse email.');
@@ -49,14 +54,11 @@ export default function SignupScreen() {
     }
 
     if (password !== passwordConfirmation) {
-      setErrorMessage('Les mots de passe ne correspondent pas.');
       return;
     }
 
     if (!cguAccepted) {
-      setErrorMessage(
-        'Vous devez accepter les conditions générales pour continuer.',
-      );
+      setCguError(true);
       return;
     }
 
@@ -85,7 +87,14 @@ export default function SignupScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top,
+        },
+      ]}
+    >
       <View style={styles.hero}>
         <Pressable
           style={styles.backButton}
@@ -93,7 +102,7 @@ export default function SignupScreen() {
           accessibilityRole="button"
           accessibilityLabel="Retour"
         >
-          <Svg width={17} height={17} viewBox="0 0 24 24">
+          <Svg width={18} height={18} viewBox="0 0 24 24">
             <Path
               d="M15 6l-6 6 6 6"
               fill="none"
@@ -106,6 +115,7 @@ export default function SignupScreen() {
 
       <View style={styles.sheet}>
         <Text style={styles.title}>Créer un compte</Text>
+
         <Text style={styles.subtitle}>
           Ça prend moins d'une minute
         </Text>
@@ -113,16 +123,21 @@ export default function SignupScreen() {
         <View style={styles.field}>
           <Text style={styles.label}>Email</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="nom@exemple.fr"
-            placeholderTextColor="#A9AFAD"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={email}
-            onChangeText={setEmail}
-          />
+          <View style={styles.inputWrap}>
+            <TextInput
+              style={styles.input}
+              placeholder="nom@exemple.fr"
+              placeholderTextColor="#A9AFAD"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={email}
+              onChangeText={(value) => {
+                setEmail(value);
+                setErrorMessage('');
+              }}
+            />
+          </View>
         </View>
 
         <View style={styles.field}>
@@ -236,11 +251,14 @@ export default function SignupScreen() {
 
         <Pressable
           style={styles.consent}
-          onPress={() =>
-            setCguAccepted((value) => !value)
-          }
+          onPress={() => {
+            setCguAccepted((value) => !value);
+            setCguError(false);
+          }}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: cguAccepted }}
+          accessibilityState={{
+            checked: cguAccepted,
+          }}
         >
           <Checkbox checked={cguAccepted} />
 
@@ -255,6 +273,12 @@ export default function SignupScreen() {
             </Text>
           </Text>
         </Pressable>
+
+        {cguError && (
+          <Text style={styles.consentError}>
+            Cochez cette case pour continuer
+          </Text>
+        )}
 
         <Pressable
           style={styles.consent}
@@ -323,6 +347,7 @@ function getPasswordStrength(password: string) {
 
   if (password.length >= 6) score++;
   if (password.length >= 10) score++;
+
   if (
     /[0-9]/.test(password) &&
     /[A-Z]/.test(password)
@@ -341,7 +366,7 @@ function getStrengthColor(strength: number) {
 
 function EyeIcon() {
   return (
-    <Svg width={17} height={17} viewBox="0 0 24 24">
+    <Svg width={18} height={18} viewBox="0 0 24 24">
       <Path
         d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"
         fill="none"
@@ -427,27 +452,27 @@ const styles = StyleSheet.create({
   },
 
   hero: {
-    height: 86,
-    backgroundColor: Colors.surface,
-    justifyContent: 'flex-end',
+    height: 56,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 22,
-    paddingBottom: 14,
   },
 
   backButton: {
-    width: 32,
-    height: 32,
+    width: 44,
+    height: 44,
     backgroundColor: Colors.fond,
-    borderRadius: 9,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-start',
   },
 
   sheet: {
-    flex: 1,
-    backgroundColor: Colors.surface,
     paddingHorizontal: 28,
-    paddingVertical: 26,
+    paddingTop: 20,
+    paddingBottom: 30,
   },
 
   title: {
@@ -459,7 +484,7 @@ const styles = StyleSheet.create({
 
   subtitle: {
     fontFamily: 'Roboto_400Regular',
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.attenue,
     marginBottom: 24,
   },
@@ -470,9 +495,9 @@ const styles = StyleSheet.create({
 
   label: {
     fontFamily: 'Roboto_500Medium',
-    fontSize: 11,
+    fontSize: 14,
     color: Colors.texte,
-    marginBottom: 6,
+    marginBottom: 7,
   },
 
   inputWrap: {
@@ -489,29 +514,29 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    backgroundColor: Colors.fond,
-    borderRadius: 12,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
+    fontSize: 16,
     color: Colors.texte,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
   },
 
   inputPassword: {
     flex: 1,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
+    fontSize: 16,
     color: Colors.texte,
   },
 
   eyeButton: {
+    minHeight: 44,
+    minWidth: 44,
     paddingHorizontal: 13,
-    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   strengthRow: {
@@ -530,19 +555,19 @@ const styles = StyleSheet.create({
   feedbackRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginTop: 6,
+    gap: 6,
+    marginTop: 7,
   },
 
   errorText: {
     fontFamily: 'Roboto_400Regular',
-    fontSize: 11,
+    fontSize: 13.5,
     color: Colors.erreur,
   },
 
   successText: {
     fontFamily: 'Roboto_400Regular',
-    fontSize: 11,
+    fontSize: 13.5,
     color: Colors.succes,
   },
 
@@ -574,8 +599,8 @@ const styles = StyleSheet.create({
   consentText: {
     flex: 1,
     fontFamily: 'Roboto_400Regular',
-    fontSize: 11.5,
-    lineHeight: 17.8,
+    fontSize: 14,
+    lineHeight: 21.7,
     color: Colors.attenue,
   },
 
@@ -588,20 +613,32 @@ const styles = StyleSheet.create({
     color: Colors.attenue,
   },
 
+  consentError: {
+    fontFamily: 'Roboto_400Regular',
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: Colors.erreur,
+    marginTop: -3,
+    marginBottom: 13,
+    marginLeft: 30,
+  },
+
   formError: {
     fontFamily: 'Roboto_400Regular',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 13.5,
+    lineHeight: 19,
     color: Colors.erreur,
     marginBottom: 10,
   },
 
   primaryButton: {
     width: '100%',
+    minHeight: 44,
     backgroundColor: Colors.accent,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 6,
   },
 
@@ -611,14 +648,14 @@ const styles = StyleSheet.create({
 
   primaryButtonText: {
     fontFamily: 'Roboto_500Medium',
-    fontSize: 14,
+    fontSize: 16,
     color: Colors.surface,
   },
 
   switchLine: {
     textAlign: 'center',
     fontFamily: 'Roboto_400Regular',
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.attenue,
     marginTop: 18,
   },
