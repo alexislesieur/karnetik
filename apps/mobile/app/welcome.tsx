@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { router } from 'expo-router';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { Colors } from '@/constants/colors';
 
@@ -26,7 +27,7 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.bottom}>
-        <Pressable style={styles.btnSolid} onPress={() => {}}>
+        <Pressable style={styles.btnSolid} onPress={() => router.push('/signup')}>
           <Text style={styles.btnSolidText}>Créer un compte</Text>
         </Pressable>
 
