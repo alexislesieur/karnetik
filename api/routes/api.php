@@ -14,6 +14,11 @@ Route::post('/register', [
     'register',
 ]);
 
+Route::post('/login', [
+    AuthController::class,
+    'login',
+]);
+
 Route::post('/email/verify', [
     EmailVerificationController::class,
     'verify',
