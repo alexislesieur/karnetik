@@ -20,3 +20,17 @@ test('inscription reussie retourne un token', function () {
         'email' => 'alexis@example.com',
     ]);
 });
+
+test('inscription refusee si email deja utilise', function () {
+    User::factory()->create(['email' => 'alexis@example.com']);
+
+    $response = $this->postJson('/api/register', [
+        'prenom' => 'Alexis',
+        'email' => 'alexis@example.com',
+        'password' => 'MotDePasse1!',
+        'password_confirmation' => 'MotDePasse1!',
+    ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors('email');
+});
