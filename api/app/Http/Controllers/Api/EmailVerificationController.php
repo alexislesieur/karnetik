@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ResendVerificationRequest;
 use App\Http\Requests\VerifyEmailRequest;
 use App\Mail\EmailVerificationMail;
 use App\Models\EmailVerificationCode;
@@ -69,7 +70,7 @@ class EmailVerificationController extends Controller
     }
 
     public function resend(
-        VerifyEmailRequest $request
+        ResendVerificationRequest $request
     ): JsonResponse {
         $validated = $request->validated();
 
