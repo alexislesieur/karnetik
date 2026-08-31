@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View, Pressable } from 'react-native';
-import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
+import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
 export default function WelcomeScreen() {
@@ -10,8 +10,19 @@ export default function WelcomeScreen() {
       <View style={[styles.blob, styles.blob2]} />
 
       <View style={styles.top}>
-        <Svg width={68} height={68} viewBox="0 0 200 200" style={styles.badge}>
-          <Rect width={200} height={200} rx={48} fill={Colors.surface} />
+        <Svg
+          width={68}
+          height={68}
+          viewBox="0 0 200 200"
+          style={styles.badge}
+        >
+          <Rect
+            width={200}
+            height={200}
+            rx={48}
+            fill={Colors.surface}
+          />
+
           <Path
             d="M586 584 430 416V0H130V1456H430V796L562 977L933 1456H1302L785 809L1317 0H960Z"
             transform="translate(68.26,136.00) scale(0.048828,-0.048828)"
@@ -27,12 +38,24 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.bottom}>
-        <Pressable style={styles.btnSolid} onPress={() => router.push('/signup')}>
-          <Text style={styles.btnSolidText}>Créer un compte</Text>
+        <Pressable
+          style={styles.btnSolid}
+          onPress={() => router.push('/signup')}
+          accessibilityRole="button"
+        >
+          <Text style={styles.btnSolidText}>
+            Créer un compte
+          </Text>
         </Pressable>
 
-        <Pressable style={styles.btnOutline} onPress={() => {}}>
-          <Text style={styles.btnOutlineText}>Se connecter</Text>
+        <Pressable
+          style={styles.btnOutline}
+          onPress={() => {}}
+          accessibilityRole="button"
+        >
+          <Text style={styles.btnOutlineText}>
+            Se connecter
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -45,15 +68,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     alignItems: 'center',
     overflow: 'hidden',
-    paddingTop: 32,
     paddingHorizontal: 30,
+    paddingTop: 32,
   },
 
   blob: {
     position: 'absolute',
     borderRadius: 999,
     backgroundColor: Colors.surface,
-    opacity: 0.15,
+    opacity: 0.13,
   },
 
   blob1: {
@@ -72,6 +95,7 @@ const styles = StyleSheet.create({
 
   top: {
     flex: 1,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
@@ -93,8 +117,8 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     fontFamily: 'Roboto_400Regular',
     fontSize: 14,
-    textAlign: 'center',
     lineHeight: 22.4,
+    textAlign: 'center',
     maxWidth: 240,
   },
 
@@ -102,36 +126,40 @@ const styles = StyleSheet.create({
     width: '100%',
     zIndex: 2,
     gap: 10,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
 
   btnSolid: {
     width: '100%',
+    minHeight: 44,
     backgroundColor: Colors.surface,
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
+    justifyContent: 'center',
   },
 
   btnSolidText: {
     color: Colors.accent,
     fontFamily: 'Roboto_500Medium',
-    fontSize: 14.5,
+    fontSize: 16,
   },
 
   btnOutline: {
     width: '100%',
+    minHeight: 44,
     backgroundColor: 'transparent',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.5)',
     borderRadius: 12,
-    paddingVertical: 13.5,
+    paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
 
   btnOutlineText: {
     color: Colors.surface,
     fontFamily: 'Roboto_500Medium',
-    fontSize: 14.5,
+    fontSize: 16,
   },
 });
