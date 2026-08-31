@@ -26,7 +26,7 @@ class EmailVerificationController extends Controller
         if ($user->email_verified_at !== null) {
             return response()->json([
                 'message' => 'Cette adresse email est déjà vérifiée.',
-            ]);
+            ], 422);
         }
 
         $verification = EmailVerificationCode::where(
