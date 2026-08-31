@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -20,14 +21,27 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] =
     useState('');
-  const [showPassword, setShowPassword] = useState(false);
+
+  const [showPassword, setShowPassword] =
+    useState(false);
+
   const [showPasswordConfirmation, setShowPasswordConfirmation] =
     useState(false);
-  const [cguAccepted, setCguAccepted] = useState(false);
-  const [marketingAccepted, setMarketingAccepted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [cguError, setCguError] = useState(false);
+
+  const [cguAccepted, setCguAccepted] =
+    useState(false);
+
+  const [marketingAccepted, setMarketingAccepted] =
+    useState(false);
+
+  const [isLoading, setIsLoading] =
+    useState(false);
+
+  const [errorMessage, setErrorMessage] =
+    useState('');
+
+  const [cguError, setCguError] =
+    useState(false);
 
   const passwordsMatch =
     passwordConfirmation.length > 0 &&
@@ -37,19 +51,26 @@ export default function SignupScreen() {
     passwordConfirmation.length > 0 &&
     password !== passwordConfirmation;
 
-  const passwordStrength = getPasswordStrength(password);
+  const passwordStrength =
+    getPasswordStrength(password);
 
   async function handleRegister() {
+    Keyboard.dismiss();
+
     setErrorMessage('');
     setCguError(false);
 
     if (!email.trim()) {
-      setErrorMessage('Veuillez renseigner votre adresse email.');
+      setErrorMessage(
+        'Veuillez renseigner votre adresse email.',
+      );
       return;
     }
 
     if (!password) {
-      setErrorMessage('Veuillez renseigner votre mot de passe.');
+      setErrorMessage(
+        'Veuillez renseigner votre mot de passe.',
+      );
       return;
     }
 
@@ -68,11 +89,14 @@ export default function SignupScreen() {
       const response = await register({
         email: email.trim(),
         password,
-        password_confirmation: passwordConfirmation,
+        password_confirmation:
+          passwordConfirmation,
       });
 
-      console.log('Inscription réussie :', response.user);
-      console.log('Token reçu :', response.token);
+      console.log(
+        'Inscription réussie :',
+        response.user,
+      );
 
       router.replace({
         pathname: '/verify-email',
@@ -92,22 +116,30 @@ export default function SignupScreen() {
   }
 
   return (
-    <View
+    <Pressable
       style={[
         styles.container,
         {
           paddingTop: insets.top,
         },
       ]}
+      onPress={Keyboard.dismiss}
     >
       <View style={styles.hero}>
         <Pressable
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            Keyboard.dismiss();
+            router.back();
+          }}
           accessibilityRole="button"
           accessibilityLabel="Retour"
         >
-          <Svg width={18} height={18} viewBox="0 0 24 24">
+          <Svg
+            width={18}
+            height={18}
+            viewBox="0 0 24 24"
+          >
             <Path
               d="M15 6l-6 6 6 6"
               fill="none"
@@ -119,14 +151,18 @@ export default function SignupScreen() {
       </View>
 
       <View style={styles.sheet}>
-        <Text style={styles.title}>Créer un compte</Text>
+        <Text style={styles.title}>
+          Créer un compte
+        </Text>
 
         <Text style={styles.subtitle}>
           Ça prend moins d'une minute
         </Text>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>
+            Email
+          </Text>
 
           <View style={styles.inputWrap}>
             <TextInput
@@ -141,12 +177,15 @@ export default function SignupScreen() {
                 setEmail(value);
                 setErrorMessage('');
               }}
+              returnKeyType="next"
             />
           </View>
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Mot de passe</Text>
+          <Text style={styles.label}>
+            Mot de passe
+          </Text>
 
           <View style={styles.inputWrap}>
             <TextInput
@@ -158,12 +197,15 @@ export default function SignupScreen() {
               onChangeText={setPassword}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="next"
             />
 
             <Pressable
               style={styles.eyeButton}
               onPress={() =>
-                setShowPassword((value) => !value)
+                setShowPassword(
+                  (value) => !value,
+                )
               }
               accessibilityRole="button"
               accessibilityLabel={
@@ -183,9 +225,10 @@ export default function SignupScreen() {
                 style={[
                   styles.strengthBar,
                   index < passwordStrength && {
-                    backgroundColor: getStrengthColor(
-                      passwordStrength,
-                    ),
+                    backgroundColor:
+                      getStrengthColor(
+                        passwordStrength,
+                      ),
                   },
                 ]}
               />
@@ -201,21 +244,30 @@ export default function SignupScreen() {
           <View
             style={[
               styles.inputWrap,
-              passwordsDoNotMatch && styles.inputWrapError,
+              passwordsDoNotMatch &&
+                styles.inputWrapError,
             ]}
           >
             <TextInput
               style={styles.inputPassword}
               placeholder="••••••••"
               placeholderTextColor="#A9AFAD"
-              secureTextEntry={!showPasswordConfirmation}
+              secureTextEntry={
+                !showPasswordConfirmation
+              }
               value={passwordConfirmation}
               onChangeText={(value) => {
-                setPasswordConfirmation(value);
+                setPasswordConfirmation(
+                  value,
+                );
                 setErrorMessage('');
               }}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={
+                handleRegister
+              }
             />
 
             <Pressable
@@ -238,7 +290,9 @@ export default function SignupScreen() {
 
           {passwordsDoNotMatch && (
             <View style={styles.feedbackRow}>
-              <CircleIcon color={Colors.erreur} />
+              <CircleIcon
+                color={Colors.erreur}
+              />
 
               <Text style={styles.errorText}>
                 Les mots de passe ne correspondent pas
@@ -248,7 +302,10 @@ export default function SignupScreen() {
 
           {passwordsMatch && (
             <View style={styles.feedbackRow}>
-              <CircleIcon color={Colors.succes} check />
+              <CircleIcon
+                color={Colors.succes}
+                check
+              />
 
               <Text style={styles.successText}>
                 Les mots de passe correspondent
@@ -260,7 +317,9 @@ export default function SignupScreen() {
         <Pressable
           style={styles.consent}
           onPress={() => {
-            setCguAccepted((value) => !value);
+            setCguAccepted(
+              (value) => !value,
+            );
             setCguError(false);
           }}
           accessibilityRole="checkbox"
@@ -291,18 +350,23 @@ export default function SignupScreen() {
         <Pressable
           style={styles.consent}
           onPress={() =>
-            setMarketingAccepted((value) => !value)
+            setMarketingAccepted(
+              (value) => !value,
+            )
           }
           accessibilityRole="checkbox"
           accessibilityState={{
             checked: marketingAccepted,
           }}
         >
-          <Checkbox checked={marketingAccepted} />
+          <Checkbox
+            checked={marketingAccepted}
+          />
 
           <Text style={styles.consentText}>
-            J'accepte de recevoir des conseils d'entretien et
-            actualités Karnetik par email{' '}
+            J'accepte de recevoir des conseils
+            d'entretien et actualités Karnetik
+            par email{' '}
             <Text style={styles.optional}>
               (facultatif)
             </Text>
@@ -318,7 +382,8 @@ export default function SignupScreen() {
         <Pressable
           style={[
             styles.primaryButton,
-            isLoading && styles.primaryButtonDisabled,
+            isLoading &&
+              styles.primaryButtonDisabled,
           ]}
           onPress={handleRegister}
           disabled={isLoading}
@@ -328,9 +393,15 @@ export default function SignupScreen() {
           }}
         >
           {isLoading ? (
-            <ActivityIndicator color={Colors.surface} />
+            <ActivityIndicator
+              color={Colors.surface}
+            />
           ) : (
-            <Text style={styles.primaryButtonText}>
+            <Text
+              style={
+                styles.primaryButtonText
+              }
+            >
               Créer mon compte
             </Text>
           )}
@@ -340,17 +411,22 @@ export default function SignupScreen() {
           Déjà un compte ?{' '}
           <Text
             style={styles.switchLink}
-            onPress={() => {}}
+            onPress={() => {
+              Keyboard.dismiss();
+              router.push('/login');
+            }}
           >
             Se connecter
           </Text>
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
-function getPasswordStrength(password: string) {
+function getPasswordStrength(
+  password: string,
+) {
   let score = 0;
 
   if (password.length >= 6) {
@@ -371,7 +447,9 @@ function getPasswordStrength(password: string) {
   return score;
 }
 
-function getStrengthColor(strength: number) {
+function getStrengthColor(
+  strength: number,
+) {
   if (strength === 1) {
     return Colors.erreur;
   }
@@ -385,7 +463,11 @@ function getStrengthColor(strength: number) {
 
 function EyeIcon() {
   return (
-    <Svg width={18} height={18} viewBox="0 0 24 24">
+    <Svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+    >
       <Path
         d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"
         fill="none"
@@ -413,7 +495,11 @@ function CircleIcon({
   check?: boolean;
 }) {
   return (
-    <Svg width={12} height={12} viewBox="0 0 24 24">
+    <Svg
+      width={12}
+      height={12}
+      viewBox="0 0 24 24"
+    >
       <Circle
         cx="12"
         cy="12"
@@ -442,16 +528,25 @@ function CircleIcon({
   );
 }
 
-function Checkbox({ checked }: { checked: boolean }) {
+function Checkbox({
+  checked,
+}: {
+  checked: boolean;
+}) {
   return (
     <View
       style={[
         styles.checkbox,
-        checked && styles.checkboxChecked,
+        checked &&
+          styles.checkboxChecked,
       ]}
     >
       {checked && (
-        <Svg width={12} height={12} viewBox="0 0 24 24">
+        <Svg
+          width={12}
+          height={12}
+          viewBox="0 0 24 24"
+        >
           <Path
             d="M4 12l5 5L20 6"
             fill="none"

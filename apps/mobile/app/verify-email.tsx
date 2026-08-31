@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -7,78 +9,161 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { router, useLocalSearchParams } from 'expo-router';
+import Svg, {
+  Circle,
+  Path,
+  Rect,
+} from 'react-native-svg';
+import {
+  router,
+  useLocalSearchParams,
+} from 'expo-router';
+import {
+  resendVerificationCode,
+  verifyEmail,
+} from '@/api/client';
 import { Colors } from '@/constants/colors';
 
 const CODE_LENGTH = 6;
 const RESEND_DELAY = 30;
+const SUCCESS_DURATION = 2000;
 
 export default function VerifyEmailScreen() {
   const insets = useSafeAreaInsets();
-  const { email } = useLocalSearchParams<{ email?: string }>();
+
+  const { email } =
+    useLocalSearchParams<{
+      email?: string;
+    }>();
 
   const [code, setCode] = useState<string[]>(
     Array(CODE_LENGTH).fill(''),
   );
-  const [seconds, setSeconds] = useState(RESEND_DELAY);
-  const [showError, setShowError] = useState(false);
 
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const [seconds, setSeconds] =
+    useState(RESEND_DELAY);
+
+  const [showError, setShowError] =
+    useState(false);
+
+  const [errorMessage, setErrorMessage] =
+    useState(
+      'Veuillez saisir les 6 chiffres du code',
+    );
+
+  const [isVerifying, setIsVerifying] =
+    useState(false);
+
+  const [isResending, setIsResending] =
+    useState(false);
+
+  const [isSuccess, setIsSuccess] =
+    useState(false);
+
+  const inputRefs =
+    useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
-    if (seconds <= 0) {
+    if (seconds <= 0 || isSuccess) {
       return;
     }
 
     const timer = setInterval(() => {
-      setSeconds((value) => Math.max(0, value - 1));
+      setSeconds((value) =>
+        Math.max(0, value - 1),
+      );
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [seconds]);
+  }, [seconds, isSuccess]);
 
-  const emailDisplay = email || 'nom@exemple.fr';
+  useEffect(() => {
+    if (!isSuccess) {
+      return;
+    }
 
-  function updateCodeAt(index: number, value: string) {
-    const digits = value.replace(/[^0-9]/g, '');
+    Keyboard.dismiss();
+
+    const timer = setTimeout(() => {
+      router.replace('/home');
+    }, SUCCESS_DURATION);
+
+    return () => clearTimeout(timer);
+  }, [isSuccess]);
+
+  const emailDisplay =
+    email || 'nom@exemple.fr';
+
+  function updateCodeAt(
+    index: number,
+    value: string,
+  ) {
+    const digits = value.replace(
+      /[^0-9]/g,
+      '',
+    );
 
     if (digits.length === 0) {
       const next = [...code];
       next[index] = '';
+
       setCode(next);
       setShowError(false);
+
       return;
     }
 
-    // Gère aussi le collage d'un code complet.
+    // Gestion du collage d'un code complet.
     if (digits.length > 1) {
-      const pastedDigits = digits.slice(0, CODE_LENGTH);
-      const next = Array(CODE_LENGTH).fill('');
+      const pastedDigits = digits.slice(
+        0,
+        CODE_LENGTH,
+      );
 
-      pastedDigits.split('').forEach((digit, i) => {
-        next[i] = digit;
-      });
+      const next = Array(
+        CODE_LENGTH,
+      ).fill('');
+
+      pastedDigits
+        .split('')
+        .forEach((digit, i) => {
+          next[i] = digit;
+        });
 
       setCode(next);
       setShowError(false);
 
-      const focusIndex = Math.min(
-        pastedDigits.length,
-        CODE_LENGTH - 1,
-      );
+      if (
+        pastedDigits.length ===
+        CODE_LENGTH
+      ) {
+        Keyboard.dismiss();
+      } else {
+        const focusIndex = Math.min(
+          index + pastedDigits.length,
+          CODE_LENGTH - 1,
+        );
 
-      inputRefs.current[focusIndex]?.focus();
+        inputRefs.current[
+          focusIndex
+        ]?.focus();
+      }
+
       return;
     }
 
     const next = [...code];
     next[index] = digits;
+
     setCode(next);
     setShowError(false);
 
     if (index < CODE_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
+      inputRefs.current[
+        index + 1
+      ]?.focus();
+    } else {
+      Keyboard.dismiss();
     }
   }
 
@@ -91,58 +176,214 @@ export default function VerifyEmailScreen() {
       code[index] === '' &&
       index > 0
     ) {
-      inputRefs.current[index - 1]?.focus();
+      inputRefs.current[
+        index - 1
+      ]?.focus();
     }
   }
 
-  function handleVerify() {
+  async function handleVerify() {
+    Keyboard.dismiss();
+
     const fullCode = code.join('');
 
-    if (fullCode.length !== CODE_LENGTH) {
+    if (
+      fullCode.length !== CODE_LENGTH
+    ) {
+      setErrorMessage(
+        'Veuillez saisir les 6 chiffres du code',
+      );
       setShowError(true);
       return;
     }
 
-    // API à brancher plus tard.
-    console.log('Code à vérifier :', fullCode);
-  }
-
-  function handleResend() {
-    if (seconds > 0) {
+    if (!email) {
+      setErrorMessage(
+        'Adresse email introuvable.',
+      );
+      setShowError(true);
       return;
     }
 
-    setSeconds(RESEND_DELAY);
-    setShowError(false);
+    try {
+      setIsVerifying(true);
+      setShowError(false);
 
-    // API à brancher plus tard.
-    console.log('Demande de renvoi du code');
+      await verifyEmail({
+        email,
+        code: fullCode,
+      });
+
+      Keyboard.dismiss();
+      setIsSuccess(true);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Le code de vérification est incorrect.',
+      );
+
+      setShowError(true);
+    } finally {
+      setIsVerifying(false);
+    }
   }
 
-  function formatCountdown(value: number) {
-    const minutes = Math.floor(value / 60);
-    const remainingSeconds = value % 60;
+  async function handleResend() {
+    Keyboard.dismiss();
 
-    return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+    if (
+      seconds > 0 ||
+      !email ||
+      isResending
+    ) {
+      return;
+    }
+
+    try {
+      setIsResending(true);
+      setShowError(false);
+
+      await resendVerificationCode(
+        email,
+      );
+
+      setSeconds(RESEND_DELAY);
+
+      setCode(
+        Array(CODE_LENGTH).fill(''),
+      );
+
+      inputRefs.current[0]?.focus();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Impossible de renvoyer le code.',
+      );
+
+      setShowError(true);
+    } finally {
+      setIsResending(false);
+    }
+  }
+
+  function formatCountdown(
+    value: number,
+  ) {
+    const minutes = Math.floor(
+      value / 60,
+    );
+
+    const remainingSeconds =
+      value % 60;
+
+    return `${minutes}:${String(
+      remainingSeconds,
+    ).padStart(2, '0')}`;
+  }
+
+  if (isSuccess) {
+    return (
+      <View
+        style={[
+          styles.successScreen,
+          {
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.confetti,
+            styles.confettiOne,
+          ]}
+        />
+
+        <View
+          style={[
+            styles.confetti,
+            styles.confettiTwo,
+          ]}
+        />
+
+        <View
+          style={[
+            styles.confetti,
+            styles.confettiThree,
+          ]}
+        />
+
+        <View
+          style={[
+            styles.confetti,
+            styles.confettiFour,
+          ]}
+        />
+
+        <View
+          style={[
+            styles.confetti,
+            styles.confettiFive,
+          ]}
+        />
+
+        <View style={styles.successBadge}>
+          <Svg
+            width={44}
+            height={44}
+            viewBox="0 0 24 24"
+          >
+            <Path
+              d="M5 13l4 4L19 7"
+              fill="none"
+              stroke={Colors.succes}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        </View>
+
+        <Text style={styles.successTitle}>
+          Email vérifié
+        </Text>
+
+        <Text style={styles.successText}>
+          Votre adresse a bien été confirmée.
+          Encore deux petites étapes avant de
+          retrouver votre carnet.
+        </Text>
+      </View>
+    );
   }
 
   return (
-    <View
+    <Pressable
       style={[
         styles.container,
         {
           paddingTop: insets.top,
         },
       ]}
+      onPress={Keyboard.dismiss}
     >
       <View style={styles.hero}>
         <Pressable
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            Keyboard.dismiss();
+            router.back();
+          }}
           accessibilityRole="button"
           accessibilityLabel="Retour"
         >
-          <Svg width={18} height={18} viewBox="0 0 24 24">
+          <Svg
+            width={18}
+            height={18}
+            viewBox="0 0 24 24"
+          >
             <Path
               d="M15 6l-6 6 6 6"
               fill="none"
@@ -155,7 +396,11 @@ export default function VerifyEmailScreen() {
 
       <View style={styles.sheet}>
         <View style={styles.envelope}>
-          <Svg width={34} height={34} viewBox="0 0 24 24">
+          <Svg
+            width={34}
+            height={34}
+            viewBox="0 0 24 24"
+          >
             <Rect
               x="3"
               y="5"
@@ -182,30 +427,35 @@ export default function VerifyEmailScreen() {
 
         <Text style={styles.subtitle}>
           Un code à 6 chiffres a été envoyé à{'\n'}
-          <Text style={styles.email}>{emailDisplay}</Text>
+          <Text style={styles.email}>
+            {emailDisplay}
+          </Text>
         </Text>
 
-        <View
-          style={[
-            styles.otpRow,
-            showError && styles.otpRowInvalid,
-          ]}
-        >
+        <View style={styles.otpRow}>
           {code.map((value, index) => (
             <TextInput
               key={index}
               ref={(ref) => {
-                inputRefs.current[index] = ref;
+                inputRefs.current[
+                  index
+                ] = ref;
               }}
               style={[
                 styles.otpBox,
-                showError && styles.otpBoxInvalid,
+                showError &&
+                  styles.otpBoxInvalid,
               ]}
               value={value}
               onChangeText={(text) =>
-                updateCodeAt(index, text)
+                updateCodeAt(
+                  index,
+                  text,
+                )
               }
-              onKeyPress={({ nativeEvent }) =>
+              onKeyPress={({
+                nativeEvent,
+              }) =>
                 handleKeyPress(
                   index,
                   nativeEvent.key,
@@ -218,69 +468,137 @@ export default function VerifyEmailScreen() {
               textAlign="center"
               autoCorrect={false}
               autoCapitalize="none"
-              accessibilityLabel={`Chiffre ${index + 1} du code`}
+              editable={!isVerifying}
+              accessibilityLabel={`Chiffre ${
+                index + 1
+              } du code`}
             />
           ))}
         </View>
 
         {showError && (
           <View style={styles.errorRow}>
-            <CircleIcon color={Colors.erreur} />
+            <CircleIcon
+              color={Colors.erreur}
+            />
 
             <Text style={styles.errorText}>
-              Veuillez saisir les 6 chiffres du code
+              {errorMessage}
             </Text>
           </View>
         )}
 
-        <View style={styles.resendContainer}>
+        <View
+          style={styles.resendContainer}
+        >
           {seconds > 0 ? (
             <Text style={styles.resendText}>
               Aucun code reçu ? Renvoyer dans{' '}
-              <Text style={styles.resendValue}>
-                {formatCountdown(seconds)}
+              <Text
+                style={
+                  styles.resendValue
+                }
+              >
+                {formatCountdown(
+                  seconds,
+                )}
               </Text>
             </Text>
           ) : (
-            <Text style={styles.resendText}>
-              Aucun code reçu ?{' '}
+            <Pressable
+              onPress={handleResend}
+              disabled={isResending}
+              accessibilityRole="button"
+            >
               <Text
-                style={styles.resendLink}
-                onPress={handleResend}
+                style={styles.resendText}
               >
-                Renvoyer le code
+                Aucun code reçu ?{' '}
+                <Text
+                  style={
+                    styles.resendLink
+                  }
+                >
+                  {isResending
+                    ? 'Envoi...'
+                    : 'Renvoyer le code'}
+                </Text>
               </Text>
-            </Text>
+            </Pressable>
           )}
         </View>
 
         <Pressable
-          style={styles.primaryButton}
+          style={[
+            styles.primaryButton,
+            isVerifying &&
+              styles.primaryButtonDisabled,
+          ]}
           onPress={handleVerify}
+          disabled={isVerifying}
           accessibilityRole="button"
+          accessibilityState={{
+            disabled: isVerifying,
+          }}
         >
-          <Text style={styles.primaryButtonText}>
-            Vérifier
-          </Text>
+          {isVerifying ? (
+            <View
+              style={styles.loadingContent}
+            >
+              <ActivityIndicator
+                size="small"
+                color={Colors.surface}
+              />
+
+              <Text
+                style={
+                  styles.primaryButtonText
+                }
+              >
+                Vérification...
+              </Text>
+            </View>
+          ) : (
+            <Text
+              style={
+                styles.primaryButtonText
+              }
+            >
+              Vérifier
+            </Text>
+          )}
         </Pressable>
 
         <Text style={styles.changeEmail}>
           Mauvaise adresse ?{' '}
           <Text
-            style={styles.changeEmailLink}
-            onPress={() => router.back()}
+            style={
+              styles.changeEmailLink
+            }
+            onPress={() => {
+              Keyboard.dismiss();
+              router.back();
+            }}
           >
             Modifier l’adresse
           </Text>
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
-function CircleIcon({ color }: { color: string }) {
+function CircleIcon({
+  color,
+}: {
+  color: string;
+}) {
   return (
-    <Svg width={13} height={13} viewBox="0 0 24 24">
+    <Svg
+      width={13}
+      height={13}
+      viewBox="0 0 24 24"
+    >
       <Circle
         cx="12"
         cy="12"
@@ -335,7 +653,7 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 20,
-    backgroundColor: Colors.tealLight,
+    backgroundColor: '#E1EDEC',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
@@ -367,10 +685,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
-  otpRowInvalid: {
-    marginBottom: 10,
-  },
-
   otpBox: {
     flex: 1,
     minHeight: 52,
@@ -380,7 +694,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     borderRadius: 12,
     padding: 0,
-    fontFamily: 'RobotoMono_500Medium',
+    fontFamily: 'Roboto_500Medium',
     fontSize: 22,
     fontWeight: '500',
     color: Colors.texte,
@@ -398,6 +712,7 @@ const styles = StyleSheet.create({
   },
 
   errorText: {
+    flex: 1,
     fontFamily: 'Roboto_400Regular',
     fontSize: 13.5,
     color: Colors.erreur,
@@ -436,6 +751,17 @@ const styles = StyleSheet.create({
     marginTop: 'auto',
   },
 
+  primaryButtonDisabled: {
+    opacity: 0.7,
+  },
+
+  loadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+  },
+
   primaryButtonText: {
     fontFamily: 'Roboto_500Medium',
     fontSize: 16,
@@ -453,5 +779,113 @@ const styles = StyleSheet.create({
   changeEmailLink: {
     color: Colors.accent,
     fontFamily: 'Roboto_500Medium',
+  },
+
+  successScreen: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 34,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+
+  successBadge: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#E1EDEC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+  },
+
+  successTitle: {
+    fontFamily: 'Roboto_700Bold',
+    fontSize: 24,
+    color: Colors.texte,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+
+  successText: {
+    fontFamily: 'Roboto_400Regular',
+    fontSize: 15,
+    lineHeight: 24,
+    color: Colors.attenue,
+    maxWidth: 260,
+    textAlign: 'center',
+  },
+
+  confetti: {
+    position: 'absolute',
+    borderRadius: 3,
+    opacity: 0.5,
+  },
+
+  confettiOne: {
+    width: 8,
+    height: 8,
+    top: '18%',
+    left: '20%',
+    transform: [
+      {
+        rotate: '20deg',
+      },
+    ],
+    backgroundColor: Colors.accent,
+  },
+
+  confettiTwo: {
+    width: 6,
+    height: 6,
+    top: '14%',
+    left: '72%',
+    transform: [
+      {
+        rotate: '-15deg',
+      },
+    ],
+    backgroundColor: '#A6631A',
+  },
+
+  confettiThree: {
+    width: 7,
+    height: 7,
+    top: '28%',
+    left: '82%',
+    transform: [
+      {
+        rotate: '40deg',
+      },
+    ],
+    backgroundColor: '#3A5A78',
+  },
+
+  confettiFour: {
+    width: 6,
+    height: 6,
+    top: '22%',
+    left: '10%',
+    transform: [
+      {
+        rotate: '-30deg',
+      },
+    ],
+    backgroundColor: Colors.accent,
+  },
+
+  confettiFive: {
+    width: 8,
+    height: 8,
+    top: '10%',
+    left: '48%',
+    transform: [
+      {
+        rotate: '10deg',
+      },
+    ],
+    backgroundColor: Colors.succes,
   },
 });
