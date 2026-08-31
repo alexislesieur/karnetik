@@ -46,3 +46,14 @@ test('inscription refusee si mot de passe trop faible', function () {
     $response->assertUnprocessable()
         ->assertJsonValidationErrors('password');
 });
+
+test('inscription refusee si email manquant', function () {
+    $response = $this->postJson('/api/register', [
+        'prenom' => 'Alexis',
+        'password' => 'MotDePasse1!',
+        'password_confirmation' => 'MotDePasse1!',
+    ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors('email');
+});
