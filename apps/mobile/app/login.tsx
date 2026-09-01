@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -7,27 +8,27 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Stack, router } from 'expo-router';
 import Svg, { Circle, Path } from 'react-native-svg';
-
-import { login } from '@/api/client';
 import { Colors } from '@/constants/colors';
+import { login } from '@/api/client';
 
 export default function LoginScreen() {
-  const insets = useSafeAreaInsets();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleLogin() {
     Keyboard.dismiss();
+    setError(null);
 
-    if (!email.trim()) {
-      setError('Veuillez saisir votre email.');
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError('Veuillez saisir votre adresse email.');
       return;
     }
 
@@ -37,29 +38,57 @@ export default function LoginScreen() {
     }
 
     try {
-      setError(null);
       setIsLoading(true);
 
       const response = await login({
-        email: email.trim(),
+        email: normalizedEmail,
         password,
       });
+
+      /*
+       * L'API refuse la connexion si l'email
+       * n'est pas encore vérifié.
+       *
+       * Dans ce cas, on renvoie l'utilisateur
+       * vers l'écran de vérification.
+       */
+      if (!response.user.email_verifie) {
+        router.replace({
+          pathname: '/verify-email',
+          params: {
+            email: normalizedEmail,
+            mode: 'email-verification',
+          },
+        });
+
+        return;
+      }
 
       router.replace('/home');
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : 'Une erreur est survenue lors de la connexion.';
+          : 'Impossible de vous connecter.';
 
+      /*
+       * Si l'API indique que l'adresse email
+       * doit être vérifiée, on renvoie directement
+       * vers l'OTP.
+       */
       if (
-        message ===
-        'Veuillez vérifier votre adresse email avant de vous connecter.'
+        message
+          .toLowerCase()
+          .includes('vérifier votre adresse email') ||
+        message
+          .toLowerCase()
+          .includes('verifier votre adresse email')
       ) {
-        router.push({
+        router.replace({
           pathname: '/verify-email',
           params: {
-            email: email.trim(),
+            email: normalizedEmail,
+            mode: 'email-verification',
           },
         });
 
@@ -72,229 +101,206 @@ export default function LoginScreen() {
     }
   }
 
+  function handleForgotPassword() {
+    router.push('/forgot-password');
+  }
+
+  function handleCreateAccount() {
+    router.push('/signup');
+  }
+
   return (
-    <Pressable
-      style={[
-        styles.container,
-        {
-          paddingTop: insets.top,
-        },
-      ]}
-      onPress={Keyboard.dismiss}
-    >
-      <View style={styles.hero}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => {
-            Keyboard.dismiss();
-            router.back();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Retour"
-        >
-          <Svg
-            width={18}
-            height={18}
-            viewBox="0 0 24 24"
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
+
+      <Pressable
+        style={styles.screen}
+        onPress={Keyboard.dismiss}
+      >
+        <View style={styles.hero}>
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.back()}
+            disabled={isLoading}
           >
-            <Path
-              d="M15 6l-6 6 6 6"
-              fill="none"
-              stroke={Colors.texte}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </Svg>
-        </Pressable>
-      </View>
-
-      <View style={styles.sheet}>
-        <Text style={styles.title}>
-          Bon retour
-        </Text>
-
-        <Text style={styles.subtitle}>
-          Connectez-vous à votre carnet
-        </Text>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>
-            Email
-          </Text>
-
-          <View
-            style={[
-              styles.inputWrap,
-              error &&
-                !email.trim() &&
-                styles.inputError,
-            ]}
-          >
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={(value) => {
-                setEmail(value);
-                setError(null);
-              }}
-              placeholder="nom@exemple.fr"
-              placeholderTextColor="#A9AFAD"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              returnKeyType="next"
-              editable={!isLoading}
-            />
-          </View>
+            <Svg
+              width={18}
+              height={18}
+              viewBox="0 0 24 24"
+            >
+              <Path
+                d="M15 6l-6 6 6 6"
+                fill="none"
+                stroke={Colors.texte}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          </Pressable>
         </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>
-            Mot de passe
+        <View style={styles.sheet}>
+          <Text style={styles.title}>
+            Bon retour
           </Text>
 
-          <View style={styles.inputWrap}>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={(value) => {
-                setPassword(value);
-                setError(null);
-              }}
-              placeholder="••••••••"
-              placeholderTextColor="#A9AFAD"
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="password"
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-              editable={!isLoading}
-            />
+          <Text style={styles.subtitle}>
+            Connectez-vous à votre carnet
+          </Text>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>
+              Email
+            </Text>
+
+            <View style={styles.inputWrap}>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  setError(null);
+                }}
+                placeholder="nom@exemple.fr"
+                placeholderTextColor="#A9AFAD"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                editable={!isLoading}
+                returnKeyType="next"
+              />
+            </View>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>
+              Mot de passe
+            </Text>
+
+            <View style={styles.inputWrap}>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  setError(null);
+                }}
+                placeholder="••••••••"
+                placeholderTextColor="#A9AFAD"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="password"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+
+              <Pressable
+                style={styles.eyeButton}
+                onPress={() =>
+                  setShowPassword(
+                    (value) => !value,
+                  )
+                }
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+              >
+                <Svg
+                  width={18}
+                  height={18}
+                  viewBox="0 0 24 24"
+                >
+                  <Path
+                    d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"
+                    fill="none"
+                    stroke={Colors.attenue}
+                    strokeWidth={2}
+                  />
+
+                  <Circle
+                    cx="12"
+                    cy="12"
+                    r="3"
+                    fill="none"
+                    stroke={Colors.attenue}
+                    strokeWidth={2}
+                  />
+                </Svg>
+              </Pressable>
+            </View>
+          </View>
+
+          <Pressable
+            style={styles.forgot}
+            onPress={handleForgotPassword}
+            disabled={isLoading}
+          >
+            <Text style={styles.forgotText}>
+              Mot de passe oublié ?
+            </Text>
+          </Pressable>
+
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>
+                {error}
+              </Text>
+            </View>
+          )}
+
+          <Pressable
+            style={[
+              styles.primaryButton,
+              isLoading &&
+                styles.primaryButtonDisabled,
+            ]}
+            onPress={handleLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator
+                color={Colors.surface}
+              />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                Se connecter
+              </Text>
+            )}
+          </Pressable>
+
+          <View style={styles.switchLine}>
+            <Text style={styles.switchText}>
+              Pas encore de compte ?{' '}
+            </Text>
 
             <Pressable
-              style={styles.eyeButton}
-              onPress={() =>
-                setShowPassword((value) => !value)
-              }
-              accessibilityRole="button"
-              accessibilityLabel={
-                showPassword
-                  ? 'Masquer le mot de passe'
-                  : 'Afficher le mot de passe'
-              }
+              onPress={handleCreateAccount}
+              disabled={isLoading}
             >
-              <Svg
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-              >
-                <Path
-                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"
-                  fill="none"
-                  stroke={Colors.attenue}
-                  strokeWidth={2}
-                />
-
-                <Circle
-                  cx="12"
-                  cy="12"
-                  r="3"
-                  fill="none"
-                  stroke={Colors.attenue}
-                  strokeWidth={2}
-                />
-              </Svg>
+              <Text style={styles.switchLink}>
+                Créer un compte
+              </Text>
             </Pressable>
           </View>
         </View>
-
-        <Pressable
-          style={styles.forgot}
-          onPress={() => {
-            Keyboard.dismiss();
-            router.push('/forgot-password');
-          }}
-          disabled={isLoading}
-        >
-          <Text style={styles.forgotText}>
-            Mot de passe oublié ?
-          </Text>
-        </Pressable>
-
-        {error && (
-          <View style={styles.errorContainer}>
-            <View style={styles.errorIcon}>
-              <Svg
-                width={13}
-                height={13}
-                viewBox="0 0 24 24"
-              >
-                <Circle
-                  cx="12"
-                  cy="12"
-                  r="9"
-                  fill="none"
-                  stroke={Colors.erreur}
-                  strokeWidth={2.5}
-                />
-
-                <Path
-                  d="M12 8v5M12 16h.01"
-                  fill="none"
-                  stroke={Colors.erreur}
-                  strokeWidth={2.5}
-                />
-              </Svg>
-            </View>
-
-            <Text style={styles.errorText}>
-              {error}
-            </Text>
-          </View>
-        )}
-
-        <Pressable
-          style={[
-            styles.primaryButton,
-            isLoading &&
-              styles.primaryButtonDisabled,
-          ]}
-          onPress={handleLogin}
-          disabled={isLoading}
-          accessibilityRole="button"
-          accessibilityState={{
-            disabled: isLoading,
-          }}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isLoading
-              ? 'Connexion...'
-              : 'Se connecter'}
-          </Text>
-        </Pressable>
-
-        <Text style={styles.switchLine}>
-          Pas encore de compte ?{' '}
-          <Text
-            style={styles.switchLink}
-            onPress={() => {
-              Keyboard.dismiss();
-              router.push('/signup');
-            }}
-          >
-            Créer un compte
-          </Text>
-        </Text>
-      </View>
-    </Pressable>
+      </Pressable>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: Colors.surface,
   },
@@ -303,8 +309,8 @@ const styles = StyleSheet.create({
     height: 56,
     flexShrink: 0,
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 22,
+    justifyContent: 'center',
   },
 
   backButton: {
@@ -359,15 +365,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 
-  inputError: {
-    borderColor: Colors.erreur,
-  },
-
   input: {
     flex: 1,
     minHeight: 46,
     paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingVertical: 12,
     fontFamily: 'Roboto_400Regular',
     fontSize: 16,
     color: Colors.texte,
@@ -384,7 +386,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     paddingVertical: 6,
     marginTop: 2,
-    marginBottom: 18,
+    marginBottom: 12,
   },
 
   forgotText: {
@@ -394,18 +396,10 @@ const styles = StyleSheet.create({
   },
 
   errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
     marginBottom: 12,
   },
 
-  errorIcon: {
-    paddingTop: 2,
-  },
-
   errorText: {
-    flex: 1,
     fontFamily: 'Roboto_400Regular',
     fontSize: 13.5,
     lineHeight: 19,
@@ -434,15 +428,21 @@ const styles = StyleSheet.create({
   },
 
   switchLine: {
-    textAlign: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+
+  switchText: {
     fontFamily: 'Roboto_400Regular',
     fontSize: 14,
     color: Colors.attenue,
-    marginTop: 18,
   },
 
   switchLink: {
     fontFamily: 'Roboto_500Medium',
+    fontSize: 14,
     color: Colors.accent,
   },
 });

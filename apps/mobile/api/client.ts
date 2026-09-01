@@ -1,4 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 export const API_URL = 'http://192.168.1.20:8000';
+
+const TOKEN_KEY = 'token';
 
 export type RegisterData = {
   prenom?: string;
@@ -95,6 +99,18 @@ async function parseResponse<T>(
   return body as T;
 }
 
+async function saveToken(token: string): Promise<void> {
+  await AsyncStorage.setItem(TOKEN_KEY, token);
+}
+
+export async function getToken(): Promise<string | null> {
+  return AsyncStorage.getItem(TOKEN_KEY);
+}
+
+export async function clearToken(): Promise<void> {
+  await AsyncStorage.removeItem(TOKEN_KEY);
+}
+
 export async function register(
   data: RegisterData,
 ): Promise<AuthResponse> {
@@ -110,7 +126,12 @@ export async function register(
     },
   );
 
-  return parseResponse<AuthResponse>(response);
+  const result =
+    await parseResponse<AuthResponse>(response);
+
+  await saveToken(result.token);
+
+  return result;
 }
 
 export async function login(
@@ -128,7 +149,12 @@ export async function login(
     },
   );
 
-  return parseResponse<AuthResponse>(response);
+  const result =
+    await parseResponse<AuthResponse>(response);
+
+  await saveToken(result.token);
+
+  return result;
 }
 
 export async function verifyEmail(
@@ -214,21 +240,7 @@ export async function verifyPasswordReset(
 export async function resendPasswordReset(
   data: ForgotPasswordData,
 ): Promise<ForgotPasswordResponse> {
-  const response = await fetch(
-    `${API_URL}/api/password/forgot`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    },
-  );
-
-  return parseResponse<ForgotPasswordResponse>(
-    response,
-  );
+  return forgotPassword(data);
 }
 
 export async function resetPassword(
