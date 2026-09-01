@@ -1,27 +1,18 @@
-import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { router } from 'expo-router';
-
-import { Colors } from '@/constants/colors';
 import {
   getCurrentUser,
   getStoredToken,
+  type User,
 } from '@/api/client';
+import { Colors } from '@/constants/colors';
 
-export default function SplashScreen() {
+export default function IndexScreen() {
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
-    let mounted = true;
-
     async function bootstrap() {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 1500);
-      });
-
-      if (!mounted) {
-        return;
-      }
-
       try {
         const token = await getStoredToken();
 
@@ -30,21 +21,17 @@ export default function SplashScreen() {
           return;
         }
 
-        const user = await getCurrentUser();
+        let user: User;
 
-        if (!mounted) {
+        try {
+          user = await getCurrentUser();
+        } catch {
+          router.replace('/(auth)/welcome');
           return;
         }
 
         if (!user.email_verifie) {
-          router.replace({
-            pathname: '/(auth)/verify-email',
-            params: {
-              email: user.email,
-              mode: 'email-verification',
-            },
-          });
-
+          router.replace('/(auth)/verify-email');
           return;
         }
 
@@ -54,96 +41,30 @@ export default function SplashScreen() {
         }
 
         router.replace('/(app)/home');
-      } catch {
-        if (!mounted) {
-          return;
-        }
-
-        router.replace('/(auth)/welcome');
+      } finally {
+        setIsLoading(false);
       }
     }
 
     bootstrap();
-
-    return () => {
-      mounted = false;
-    };
   }, []);
+
+  if (!isLoading) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
-      <View style={[styles.blob, styles.blob1]} />
-      <View style={[styles.blob, styles.blob2]} />
-
-      <View style={styles.content}>
-        <Svg
-          width={80}
-          height={80}
-          viewBox="0 0 200 200"
-          style={styles.badge}
-        >
-          <Rect
-            width={200}
-            height={200}
-            rx={48}
-            fill={Colors.surface}
-          />
-
-          <Path
-            d="M586 584 430 416V0H130V1456H430V796L562 977L933 1456H1302L785 809L1317 0H960Z"
-            transform="translate(68.26,136.00) scale(0.048828,-0.048828)"
-            fill={Colors.accent}
-          />
-        </Svg>
-
-        <Text style={styles.word}>KARNETIK</Text>
-      </View>
+      <ActivityIndicator color={Colors.accent} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = {
   container: {
     flex: 1,
-    backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-
-  blob: {
-    position: 'absolute',
-    borderRadius: 999,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
     backgroundColor: Colors.surface,
-    opacity: 0.15,
   },
-
-  blob1: {
-    width: 220,
-    height: 220,
-    top: -70,
-    left: -70,
-  },
-
-  blob2: {
-    width: 280,
-    height: 280,
-    bottom: -110,
-    right: -90,
-  },
-
-  content: {
-    alignItems: 'center',
-  },
-
-  badge: {
-    marginBottom: 18,
-  },
-
-  word: {
-    color: Colors.surface,
-    fontFamily: 'Roboto_700Bold',
-    fontSize: 23,
-    letterSpacing: 2,
-  },
-});
+};

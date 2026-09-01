@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EmailVerificationController;
 use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\VehicleCatalogController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -42,14 +43,37 @@ Route::post('/password/reset', [
     'reset',
 ]);
 
+Route::get('/vehicle-brands', [
+    VehicleCatalogController::class,
+    'brands',
+]);
+
+Route::get('/vehicle-brands/{brand}/models', [
+    VehicleCatalogController::class,
+    'models',
+]);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        $user = $request->user();
+
+        return response()->json([
+            'id' => $user->id,
+            'prenom' => $user->prenom,
+            'email' => $user->email,
+            'email_verifie' => $user->email_verified_at !== null,
+            'onboarding_completed' => $user->onboarding_completed,
+        ]);
     });
 
     Route::patch('/onboarding/name', [
         OnboardingController::class,
-        'complete',
+        'completeName',
+    ]);
+
+    Route::post('/onboarding/vehicle', [
+        OnboardingController::class,
+        'completeVehicle',
     ]);
 });
 

@@ -14,6 +14,25 @@ export type User = {
   onboarding_completed: boolean;
 };
 
+export type VehicleBrand = {
+  id: number;
+  nom: string;
+};
+
+export type VehicleModel = {
+  id: number;
+  nom: string;
+};
+
+export type Vehicle = {
+  id: number;
+  marque: string;
+  modele: string;
+  immatriculation: string;
+  kilometrage_actuel: number;
+  mise_en_circulation: string;
+};
+
 type AuthResponse = {
   user: User;
   token: string;
@@ -58,9 +77,7 @@ async function request<T>(
     const errorData = data as ApiErrorResponse | null;
 
     if (errorData?.errors) {
-      const firstError = Object.values(
-        errorData.errors,
-      )[0]?.[0];
+      const firstError = Object.values(errorData.errors)[0]?.[0];
 
       if (firstError) {
         throw new Error(firstError);
@@ -156,6 +173,65 @@ export async function completeOnboarding(
     method: 'PATCH',
     body: JSON.stringify({
       prenom: prenom.trim(),
+    }),
+  });
+
+  await AsyncStorage.setItem(
+    USER_KEY,
+    JSON.stringify(response.user),
+  );
+
+  return response;
+}
+
+export async function getVehicleBrands(): Promise<VehicleBrand[]> {
+  const response = await request<{
+    brands: VehicleBrand[];
+  }>('/vehicle-brands', {
+    method: 'GET',
+  });
+
+  return response.brands;
+}
+
+export async function getVehicleModels(
+  brandId: number,
+): Promise<VehicleModel[]> {
+  const response = await request<{
+    brand: VehicleBrand;
+    models: VehicleModel[];
+  }>(`/vehicle-brands/${brandId}/models`, {
+    method: 'GET',
+  });
+
+  return response.models;
+}
+
+export async function completeVehicle(params: {
+  vehicle_brand_id: number;
+  vehicle_model_id: number;
+  immatriculation: string;
+  kilometrage_actuel: number;
+  mise_en_circulation: string;
+}): Promise<{
+  message: string;
+  user: User;
+  vehicle: Vehicle;
+}> {
+  const response = await request<{
+    message: string;
+    user: User;
+    vehicle: Vehicle;
+  }>('/onboarding/vehicle', {
+    method: 'POST',
+    body: JSON.stringify({
+      vehicle_brand_id: params.vehicle_brand_id,
+      vehicle_model_id: params.vehicle_model_id,
+      immatriculation: params.immatriculation
+        .trim()
+        .toUpperCase(),
+      kilometrage_actuel: params.kilometrage_actuel,
+      mise_en_circulation: params.mise_en_circulation,
     }),
   });
 

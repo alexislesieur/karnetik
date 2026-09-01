@@ -11,7 +11,6 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
-
 import { completeOnboarding } from '@/api/client';
 import { Colors } from '@/constants/colors';
 
@@ -48,7 +47,7 @@ export default function OnboardingNameScreen() {
 
       await completeOnboarding(name);
 
-      router.replace('/(app)/home');
+      router.replace('/(onboarding)/vehicle');
     } catch {
       setError(true);
     } finally {
@@ -212,7 +211,9 @@ export default function OnboardingNameScreen() {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color={Colors.surface} />
+            <ActivityIndicator
+              color={Colors.surface}
+            />
           ) : (
             <Text style={styles.primaryButtonText}>
               Continuer
