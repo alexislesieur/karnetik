@@ -9,30 +9,35 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-import { login } from '@/api/client';
+import { forgotPassword } from '@/api/client';
 import { Colors } from '@/constants/colors';
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  async function handleLogin() {
+  async function handleSubmit() {
     Keyboard.dismiss();
 
-    if (!email.trim()) {
-      setError('Veuillez saisir votre email.');
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail) {
+      setError('Entrez une adresse email valide');
       return;
     }
 
-    if (!password) {
-      setError('Veuillez saisir votre mot de passe.');
+    const emailIsValid =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        normalizedEmail,
+      );
+
+    if (!emailIsValid) {
+      setError('Entrez une adresse email valide');
       return;
     }
 
@@ -40,33 +45,23 @@ export default function LoginScreen() {
       setError(null);
       setIsLoading(true);
 
-      const response = await login({
-        email: email.trim(),
-        password,
+      await forgotPassword({
+        email: normalizedEmail,
       });
 
-      router.replace('/home');
+      router.push({
+        pathname: '/verify-email',
+        params: {
+          email: normalizedEmail,
+          mode: 'password-reset',
+        },
+      });
     } catch (err) {
-      const message =
+      setError(
         err instanceof Error
           ? err.message
-          : 'Une erreur est survenue lors de la connexion.';
-
-      if (
-        message ===
-        'Veuillez vérifier votre adresse email avant de vous connecter.'
-      ) {
-        router.push({
-          pathname: '/verify-email',
-          params: {
-            email: email.trim(),
-          },
-        });
-
-        return;
-      }
-
-      setError(message);
+          : 'Une erreur est survenue.',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -89,8 +84,6 @@ export default function LoginScreen() {
             Keyboard.dismiss();
             router.back();
           }}
-          accessibilityRole="button"
-          accessibilityLabel="Retour"
         >
           <Svg
             width={18}
@@ -110,12 +103,39 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.sheet}>
+        <View style={styles.lockIcon}>
+          <Svg
+            width={34}
+            height={34}
+            viewBox="0 0 24 24"
+          >
+            <Rect
+              x="4"
+              y="10"
+              width="16"
+              height="10"
+              rx="2"
+              fill="none"
+              stroke={Colors.accent}
+              strokeWidth={1.8}
+            />
+
+            <Path
+              d="M8 10V7a4 4 0 0 1 8 0v3"
+              fill="none"
+              stroke={Colors.accent}
+              strokeWidth={1.8}
+            />
+          </Svg>
+        </View>
+
         <Text style={styles.title}>
-          Bon retour
+          Mot de passe oublié ?
         </Text>
 
         <Text style={styles.subtitle}>
-          Connectez-vous à votre carnet
+          Entrez votre email, on vous envoie un
+          code pour le réinitialiser.
         </Text>
 
         <View style={styles.field}>
@@ -126,9 +146,7 @@ export default function LoginScreen() {
           <View
             style={[
               styles.inputWrap,
-              error &&
-                !email.trim() &&
-                styles.inputError,
+              error && styles.inputError,
             ]}
           >
             <TextInput
@@ -144,92 +162,17 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="email"
-              returnKeyType="next"
-              editable={!isLoading}
-            />
-          </View>
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>
-            Mot de passe
-          </Text>
-
-          <View style={styles.inputWrap}>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={(value) => {
-                setPassword(value);
-                setError(null);
-              }}
-              placeholder="••••••••"
-              placeholderTextColor="#A9AFAD"
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="password"
               returnKeyType="done"
-              onSubmitEditing={handleLogin}
+              onSubmitEditing={handleSubmit}
               editable={!isLoading}
             />
-
-            <Pressable
-              style={styles.eyeButton}
-              onPress={() =>
-                setShowPassword((value) => !value)
-              }
-              accessibilityRole="button"
-              accessibilityLabel={
-                showPassword
-                  ? 'Masquer le mot de passe'
-                  : 'Afficher le mot de passe'
-              }
-            >
-              <Svg
-                width={18}
-                height={18}
-                viewBox="0 0 24 24"
-              >
-                <Path
-                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"
-                  fill="none"
-                  stroke={Colors.attenue}
-                  strokeWidth={2}
-                />
-
-                <Circle
-                  cx="12"
-                  cy="12"
-                  r="3"
-                  fill="none"
-                  stroke={Colors.attenue}
-                  strokeWidth={2}
-                />
-              </Svg>
-            </Pressable>
           </View>
-        </View>
 
-        <Pressable
-          style={styles.forgot}
-          onPress={() => {
-            Keyboard.dismiss();
-            router.push('/forgot-password');
-          }}
-          disabled={isLoading}
-        >
-          <Text style={styles.forgotText}>
-            Mot de passe oublié ?
-          </Text>
-        </Pressable>
-
-        {error && (
-          <View style={styles.errorContainer}>
-            <View style={styles.errorIcon}>
+          {error && (
+            <View style={styles.errorContainer}>
               <Svg
-                width={13}
-                height={13}
+                width={12}
+                height={12}
                 viewBox="0 0 24 24"
               >
                 <Circle
@@ -248,13 +191,13 @@ export default function LoginScreen() {
                   strokeWidth={2.5}
                 />
               </Svg>
-            </View>
 
-            <Text style={styles.errorText}>
-              {error}
-            </Text>
-          </View>
-        )}
+              <Text style={styles.errorText}>
+                {error}
+              </Text>
+            </View>
+          )}
+        </View>
 
         <Pressable
           style={[
@@ -262,32 +205,15 @@ export default function LoginScreen() {
             isLoading &&
               styles.primaryButtonDisabled,
           ]}
-          onPress={handleLogin}
+          onPress={handleSubmit}
           disabled={isLoading}
-          accessibilityRole="button"
-          accessibilityState={{
-            disabled: isLoading,
-          }}
         >
           <Text style={styles.primaryButtonText}>
             {isLoading
-              ? 'Connexion...'
-              : 'Se connecter'}
+              ? 'Envoi...'
+              : 'Envoyer le code'}
           </Text>
         </Pressable>
-
-        <Text style={styles.switchLine}>
-          Pas encore de compte ?{' '}
-          <Text
-            style={styles.switchLink}
-            onPress={() => {
-              Keyboard.dismiss();
-              router.push('/signup');
-            }}
-          >
-            Créer un compte
-          </Text>
-        </Text>
       </View>
     </Pressable>
   );
@@ -320,22 +246,33 @@ const styles = StyleSheet.create({
   sheet: {
     flex: 1,
     paddingHorizontal: 28,
-    paddingTop: 20,
+    paddingTop: 10,
     paddingBottom: 30,
+  },
+
+  lockIcon: {
+    width: 76,
+    height: 76,
+    borderRadius: 20,
+    backgroundColor: Colors.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 22,
   },
 
   title: {
     fontFamily: 'Roboto_700Bold',
-    fontSize: 21,
+    fontSize: 22,
     color: Colors.texte,
-    marginBottom: 4,
+    marginBottom: 8,
   },
 
   subtitle: {
     fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 23,
     color: Colors.attenue,
-    marginBottom: 24,
+    marginBottom: 26,
   },
 
   field: {
@@ -373,49 +310,23 @@ const styles = StyleSheet.create({
     color: Colors.texte,
   },
 
-  eyeButton: {
-    minHeight: 44,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  forgot: {
-    alignSelf: 'flex-end',
-    paddingVertical: 6,
-    marginTop: 2,
-    marginBottom: 18,
-  },
-
-  forgotText: {
-    fontFamily: 'Roboto_500Medium',
-    fontSize: 14,
-    color: Colors.accent,
-  },
-
   errorContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 6,
-    marginBottom: 12,
-  },
-
-  errorIcon: {
-    paddingTop: 2,
+    marginTop: 7,
   },
 
   errorText: {
-    flex: 1,
     fontFamily: 'Roboto_400Regular',
     fontSize: 13.5,
-    lineHeight: 19,
     color: Colors.erreur,
   },
 
   primaryButton: {
     width: '100%',
     minHeight: 44,
-    marginTop: 6,
+    marginTop: 8,
     borderRadius: 12,
     backgroundColor: Colors.accent,
     alignItems: 'center',
@@ -431,18 +342,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto_500Medium',
     fontSize: 16,
     color: Colors.surface,
-  },
-
-  switchLine: {
-    textAlign: 'center',
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
-    color: Colors.attenue,
-    marginTop: 18,
-  },
-
-  switchLink: {
-    fontFamily: 'Roboto_500Medium',
-    color: Colors.accent,
   },
 });

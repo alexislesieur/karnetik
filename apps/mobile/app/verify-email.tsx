@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -8,355 +7,144 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, {
-  Circle,
-  Path,
-  Rect,
-} from 'react-native-svg';
 import {
   router,
   useLocalSearchParams,
 } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Path } from 'react-native-svg';
+
 import {
-  resendVerificationCode,
+  resendPasswordReset,
+  resendVerification,
   verifyEmail,
+  verifyPasswordReset,
 } from '@/api/client';
 import { Colors } from '@/constants/colors';
-
-const CODE_LENGTH = 6;
-const RESEND_DELAY = 30;
-const SUCCESS_DURATION = 2000;
 
 export default function VerifyEmailScreen() {
   const insets = useSafeAreaInsets();
 
-  const { email } =
-    useLocalSearchParams<{
-      email?: string;
-    }>();
+  const {
+    email = '',
+    mode,
+  } = useLocalSearchParams<{
+    email?: string;
+    mode?: string;
+  }>();
 
-  const [code, setCode] = useState<string[]>(
-    Array(CODE_LENGTH).fill(''),
+  const isPasswordReset =
+    mode === 'password-reset';
+
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(
+    null,
   );
-
-  const [seconds, setSeconds] =
-    useState(RESEND_DELAY);
-
-  const [showError, setShowError] =
-    useState(false);
-
-  const [errorMessage, setErrorMessage] =
-    useState(
-      'Veuillez saisir les 6 chiffres du code',
-    );
-
-  const [isVerifying, setIsVerifying] =
-    useState(false);
-
+  const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] =
     useState(false);
 
-  const [isSuccess, setIsSuccess] =
-    useState(false);
-
-  const inputRefs =
-    useRef<(TextInput | null)[]>([]);
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (seconds <= 0 || isSuccess) {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setSeconds((value) =>
-        Math.max(0, value - 1),
-      );
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [seconds, isSuccess]);
-
-  useEffect(() => {
-    if (!isSuccess) {
-      return;
-    }
-
-    Keyboard.dismiss();
-
     const timer = setTimeout(() => {
-      router.replace('/home');
-    }, SUCCESS_DURATION);
+      inputRef.current?.focus();
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [isSuccess]);
-
-  const emailDisplay =
-    email || 'nom@exemple.fr';
-
-  function updateCodeAt(
-    index: number,
-    value: string,
-  ) {
-    const digits = value.replace(
-      /[^0-9]/g,
-      '',
-    );
-
-    if (digits.length === 0) {
-      const next = [...code];
-      next[index] = '';
-
-      setCode(next);
-      setShowError(false);
-
-      return;
-    }
-
-    // Gestion du collage d'un code complet.
-    if (digits.length > 1) {
-      const pastedDigits = digits.slice(
-        0,
-        CODE_LENGTH,
-      );
-
-      const next = Array(
-        CODE_LENGTH,
-      ).fill('');
-
-      pastedDigits
-        .split('')
-        .forEach((digit, i) => {
-          next[i] = digit;
-        });
-
-      setCode(next);
-      setShowError(false);
-
-      if (
-        pastedDigits.length ===
-        CODE_LENGTH
-      ) {
-        Keyboard.dismiss();
-      } else {
-        const focusIndex = Math.min(
-          index + pastedDigits.length,
-          CODE_LENGTH - 1,
-        );
-
-        inputRefs.current[
-          focusIndex
-        ]?.focus();
-      }
-
-      return;
-    }
-
-    const next = [...code];
-    next[index] = digits;
-
-    setCode(next);
-    setShowError(false);
-
-    if (index < CODE_LENGTH - 1) {
-      inputRefs.current[
-        index + 1
-      ]?.focus();
-    } else {
-      Keyboard.dismiss();
-    }
-  }
-
-  function handleKeyPress(
-    index: number,
-    key: string,
-  ) {
-    if (
-      key === 'Backspace' &&
-      code[index] === '' &&
-      index > 0
-    ) {
-      inputRefs.current[
-        index - 1
-      ]?.focus();
-    }
-  }
+  }, []);
 
   async function handleVerify() {
+    if (code.length !== 6 || isLoading) {
+      return;
+    }
+
     Keyboard.dismiss();
-
-    const fullCode = code.join('');
-
-    if (
-      fullCode.length !== CODE_LENGTH
-    ) {
-      setErrorMessage(
-        'Veuillez saisir les 6 chiffres du code',
-      );
-      setShowError(true);
-      return;
-    }
-
-    if (!email) {
-      setErrorMessage(
-        'Adresse email introuvable.',
-      );
-      setShowError(true);
-      return;
-    }
+    setError(null);
+    setIsLoading(true);
 
     try {
-      setIsVerifying(true);
-      setShowError(false);
+      if (isPasswordReset) {
+        await verifyPasswordReset({
+          email,
+          code,
+        });
+
+        router.replace({
+          pathname: '/reset-password',
+          params: {
+            email,
+            code,
+          },
+        });
+
+        return;
+      }
 
       await verifyEmail({
         email,
-        code: fullCode,
+        code,
       });
 
-      Keyboard.dismiss();
-      setIsSuccess(true);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'Le code de vérification est incorrect.',
+      router.replace('/email-success');
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Une erreur est survenue.',
       );
-
-      setShowError(true);
     } finally {
-      setIsVerifying(false);
+      setIsLoading(false);
     }
   }
 
   async function handleResend() {
-    Keyboard.dismiss();
-
-    if (
-      seconds > 0 ||
-      !email ||
-      isResending
-    ) {
+    if (isResending || isLoading) {
       return;
     }
 
+    Keyboard.dismiss();
+    setError(null);
+    setIsResending(true);
+
     try {
-      setIsResending(true);
-      setShowError(false);
+      if (isPasswordReset) {
+        await resendPasswordReset({
+          email,
+        });
+      } else {
+        await resendVerification({
+          email,
+        });
+      }
 
-      await resendVerificationCode(
-        email,
-      );
+      setCode('');
 
-      setSeconds(RESEND_DELAY);
-
-      setCode(
-        Array(CODE_LENGTH).fill(''),
-      );
-
-      inputRefs.current[0]?.focus();
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
           : 'Impossible de renvoyer le code.',
       );
-
-      setShowError(true);
     } finally {
       setIsResending(false);
     }
   }
 
-  function formatCountdown(
-    value: number,
-  ) {
-    const minutes = Math.floor(
-      value / 60,
-    );
+  function handleCodeChange(value: string) {
+    const digitsOnly = value
+      .replace(/\D/g, '')
+      .slice(0, 6);
 
-    const remainingSeconds =
-      value % 60;
+    setCode(digitsOnly);
+    setError(null);
 
-    return `${minutes}:${String(
-      remainingSeconds,
-    ).padStart(2, '0')}`;
-  }
-
-  if (isSuccess) {
-    return (
-      <View
-        style={[
-          styles.successScreen,
-          {
-            paddingTop: insets.top,
-            paddingBottom: insets.bottom,
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.confetti,
-            styles.confettiOne,
-          ]}
-        />
-
-        <View
-          style={[
-            styles.confetti,
-            styles.confettiTwo,
-          ]}
-        />
-
-        <View
-          style={[
-            styles.confetti,
-            styles.confettiThree,
-          ]}
-        />
-
-        <View
-          style={[
-            styles.confetti,
-            styles.confettiFour,
-          ]}
-        />
-
-        <View
-          style={[
-            styles.confetti,
-            styles.confettiFive,
-          ]}
-        />
-
-        <View style={styles.successBadge}>
-          <Svg
-            width={44}
-            height={44}
-            viewBox="0 0 24 24"
-          >
-            <Path
-              d="M5 13l4 4L19 7"
-              fill="none"
-              stroke={Colors.succes}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </Svg>
-        </View>
-
-        <Text style={styles.successTitle}>
-          Email vérifié
-        </Text>
-
-        <Text style={styles.successText}>
-          Votre adresse a bien été confirmée.
-          Encore deux petites étapes avant de
-          retrouver votre carnet.
-        </Text>
-      </View>
-    );
+    if (digitsOnly.length === 6) {
+      Keyboard.dismiss();
+    }
   }
 
   return (
@@ -389,34 +177,34 @@ export default function VerifyEmailScreen() {
               fill="none"
               stroke={Colors.texte}
               strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
           </Svg>
         </Pressable>
       </View>
 
-      <View style={styles.sheet}>
-        <View style={styles.envelope}>
+      <View style={styles.content}>
+        <View style={styles.icon}>
           <Svg
             width={34}
             height={34}
             viewBox="0 0 24 24"
           >
-            <Rect
-              x="3"
-              y="5"
-              width="18"
-              height="14"
-              rx="2"
+            <Path
+              d="M4 4h16v16H4z"
               fill="none"
               stroke={Colors.accent}
               strokeWidth={1.8}
+              strokeLinejoin="round"
             />
 
             <Path
-              d="M3 7l9 6 9-6"
+              d="M4 6l8 6 8-6"
               fill="none"
               stroke={Colors.accent}
               strokeWidth={1.8}
+              strokeLinejoin="round"
             />
           </Svg>
         </View>
@@ -426,195 +214,111 @@ export default function VerifyEmailScreen() {
         </Text>
 
         <Text style={styles.subtitle}>
-          Un code à 6 chiffres a été envoyé à{'\n'}
-          <Text style={styles.email}>
-            {emailDisplay}
-          </Text>
+          Entrez le code à 6 chiffres envoyé à
         </Text>
 
-        <View style={styles.otpRow}>
-          {code.map((value, index) => (
-            <TextInput
-              key={index}
-              ref={(ref) => {
-                inputRefs.current[
-                  index
-                ] = ref;
-              }}
-              style={[
-                styles.otpBox,
-                showError &&
-                  styles.otpBoxInvalid,
-              ]}
-              value={value}
-              onChangeText={(text) =>
-                updateCodeAt(
-                  index,
-                  text,
-                )
-              }
-              onKeyPress={({
-                nativeEvent,
-              }) =>
-                handleKeyPress(
-                  index,
-                  nativeEvent.key,
-                )
-              }
-              keyboardType="number-pad"
-              inputMode="numeric"
-              maxLength={CODE_LENGTH}
-              selectTextOnFocus
-              textAlign="center"
-              autoCorrect={false}
-              autoCapitalize="none"
-              editable={!isVerifying}
-              accessibilityLabel={`Chiffre ${
-                index + 1
-              } du code`}
-            />
-          ))}
-        </View>
+        <Text style={styles.email}>
+          {email}
+        </Text>
 
-        {showError && (
-          <View style={styles.errorRow}>
-            <CircleIcon
-              color={Colors.erreur}
-            />
+        <TextInput
+          ref={inputRef}
+          value={code}
+          onChangeText={handleCodeChange}
+          keyboardType="number-pad"
+          maxLength={6}
+          textContentType="oneTimeCode"
+          autoComplete="one-time-code"
+          style={styles.codeInput}
+          editable={!isLoading}
+          onSubmitEditing={handleVerify}
+        />
+
+        <Pressable
+          style={styles.digits}
+          onPress={() => inputRef.current?.focus()}
+        >
+          {Array.from({ length: 6 }).map(
+            (_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.digit,
+                  code.length > index &&
+                    styles.digitFilled,
+                  error &&
+                    styles.digitError,
+                ]}
+              >
+                <Text style={styles.digitText}>
+                  {code[index] ?? ''}
+                </Text>
+              </View>
+            ),
+          )}
+        </Pressable>
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <Svg
+              width={13}
+              height={13}
+              viewBox="0 0 24 24"
+            >
+              <Circle
+                cx="12"
+                cy="12"
+                r="9"
+                fill="none"
+                stroke={Colors.erreur}
+                strokeWidth={2.5}
+              />
+
+              <Path
+                d="M12 8v5M12 16h.01"
+                fill="none"
+                stroke={Colors.erreur}
+                strokeWidth={2.5}
+              />
+            </Svg>
 
             <Text style={styles.errorText}>
-              {errorMessage}
+              {error}
             </Text>
           </View>
         )}
 
-        <View
-          style={styles.resendContainer}
-        >
-          {seconds > 0 ? (
-            <Text style={styles.resendText}>
-              Aucun code reçu ? Renvoyer dans{' '}
-              <Text
-                style={
-                  styles.resendValue
-                }
-              >
-                {formatCountdown(
-                  seconds,
-                )}
-              </Text>
-            </Text>
-          ) : (
-            <Pressable
-              onPress={handleResend}
-              disabled={isResending}
-              accessibilityRole="button"
-            >
-              <Text
-                style={styles.resendText}
-              >
-                Aucun code reçu ?{' '}
-                <Text
-                  style={
-                    styles.resendLink
-                  }
-                >
-                  {isResending
-                    ? 'Envoi...'
-                    : 'Renvoyer le code'}
-                </Text>
-              </Text>
-            </Pressable>
-          )}
-        </View>
-
         <Pressable
           style={[
-            styles.primaryButton,
-            isVerifying &&
-              styles.primaryButtonDisabled,
+            styles.verifyButton,
+            (code.length !== 6 || isLoading) &&
+              styles.verifyButtonDisabled,
           ]}
           onPress={handleVerify}
-          disabled={isVerifying}
-          accessibilityRole="button"
-          accessibilityState={{
-            disabled: isVerifying,
-          }}
+          disabled={
+            code.length !== 6 || isLoading
+          }
         >
-          {isVerifying ? (
-            <View
-              style={styles.loadingContent}
-            >
-              <ActivityIndicator
-                size="small"
-                color={Colors.surface}
-              />
-
-              <Text
-                style={
-                  styles.primaryButtonText
-                }
-              >
-                Vérification...
-              </Text>
-            </View>
-          ) : (
-            <Text
-              style={
-                styles.primaryButtonText
-              }
-            >
-              Vérifier
-            </Text>
-          )}
+          <Text style={styles.verifyButtonText}>
+            {isLoading
+              ? 'Vérification...'
+              : 'Vérifier le code'}
+          </Text>
         </Pressable>
 
-        <Text style={styles.changeEmail}>
-          Mauvaise adresse ?{' '}
-          <Text
-            style={
-              styles.changeEmailLink
-            }
-            onPress={() => {
-              Keyboard.dismiss();
-              router.back();
-            }}
-          >
-            Modifier l’adresse
+        <Pressable
+          style={styles.resendButton}
+          onPress={handleResend}
+          disabled={isResending || isLoading}
+        >
+          <Text style={styles.resendText}>
+            {isResending
+              ? 'Envoi...'
+              : 'Renvoyer le code'}
           </Text>
-        </Text>
+        </Pressable>
       </View>
     </Pressable>
-  );
-}
-
-function CircleIcon({
-  color,
-}: {
-  color: string;
-}) {
-  return (
-    <Svg
-      width={13}
-      height={13}
-      viewBox="0 0 24 24"
-    >
-      <Circle
-        cx="12"
-        cy="12"
-        r="9"
-        fill="none"
-        stroke={color}
-        strokeWidth={2.5}
-      />
-
-      <Path
-        d="M12 8v5M12 16h.01"
-        fill="none"
-        stroke={color}
-        strokeWidth={2.5}
-      />
-    </Svg>
   );
 }
 
@@ -635,25 +339,25 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
-    backgroundColor: Colors.fond,
     borderRadius: 12,
+    backgroundColor: Colors.fond,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
   },
 
-  sheet: {
+  content: {
     flex: 1,
+    alignItems: 'center',
     paddingHorizontal: 28,
-    paddingTop: 10,
-    paddingBottom: 30,
+    paddingTop: 25,
   },
 
-  envelope: {
+  icon: {
     width: 76,
     height: 76,
     borderRadius: 20,
-    backgroundColor: '#E1EDEC',
+    backgroundColor: Colors.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
@@ -664,228 +368,103 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: Colors.texte,
     marginBottom: 8,
+    textAlign: 'center',
   },
 
   subtitle: {
     fontFamily: 'Roboto_400Regular',
     fontSize: 15,
-    lineHeight: 23.25,
     color: Colors.attenue,
-    marginBottom: 28,
+    textAlign: 'center',
   },
 
   email: {
-    color: Colors.texte,
     fontFamily: 'Roboto_500Medium',
+    fontSize: 15,
+    color: Colors.texte,
+    marginTop: 4,
+    marginBottom: 26,
   },
 
-  otpRow: {
+  codeInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+  },
+
+  digits: {
     flexDirection: 'row',
-    gap: 9,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 12,
   },
 
-  otpBox: {
-    flex: 1,
-    minHeight: 52,
-    aspectRatio: 1,
+  digit: {
+    width: 44,
+    height: 52,
+    borderRadius: 12,
     backgroundColor: Colors.fond,
     borderWidth: 1.5,
     borderColor: 'transparent',
-    borderRadius: 12,
-    padding: 0,
-    fontFamily: 'Roboto_500Medium',
-    fontSize: 22,
-    fontWeight: '500',
-    color: Colors.texte,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  otpBoxInvalid: {
+  digitFilled: {
+    borderColor: Colors.accent,
+    backgroundColor: Colors.surface,
+  },
+
+  digitError: {
     borderColor: Colors.erreur,
   },
 
-  errorRow: {
+  digitText: {
+    fontFamily: 'Roboto_700Bold',
+    fontSize: 22,
+    color: Colors.texte,
+  },
+
+  errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 18,
+    marginBottom: 12,
   },
 
   errorText: {
-    flex: 1,
     fontFamily: 'Roboto_400Regular',
     fontSize: 13.5,
     color: Colors.erreur,
   },
 
-  resendContainer: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-
-  resendText: {
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
-    color: Colors.attenue,
-    textAlign: 'center',
-  },
-
-  resendValue: {
-    color: Colors.accent,
-    fontFamily: 'Roboto_500Medium',
-  },
-
-  resendLink: {
-    color: Colors.accent,
-    fontFamily: 'Roboto_500Medium',
-  },
-
-  primaryButton: {
+  verifyButton: {
     width: '100%',
     minHeight: 44,
-    backgroundColor: Colors.accent,
     borderRadius: 12,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 'auto',
   },
 
-  primaryButtonDisabled: {
-    opacity: 0.7,
+  verifyButtonDisabled: {
+    opacity: 0.5,
   },
 
-  loadingContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-  },
-
-  primaryButtonText: {
+  verifyButtonText: {
     fontFamily: 'Roboto_500Medium',
     fontSize: 16,
     color: Colors.surface,
   },
 
-  changeEmail: {
-    textAlign: 'center',
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
-    color: Colors.attenue,
-    marginTop: 16,
+  resendButton: {
+    paddingVertical: 16,
   },
 
-  changeEmailLink: {
-    color: Colors.accent,
+  resendText: {
     fontFamily: 'Roboto_500Medium',
-  },
-
-  successScreen: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 34,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-
-  successBadge: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#E1EDEC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 28,
-  },
-
-  successTitle: {
-    fontFamily: 'Roboto_700Bold',
-    fontSize: 24,
-    color: Colors.texte,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-
-  successText: {
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 15,
-    lineHeight: 24,
-    color: Colors.attenue,
-    maxWidth: 260,
-    textAlign: 'center',
-  },
-
-  confetti: {
-    position: 'absolute',
-    borderRadius: 3,
-    opacity: 0.5,
-  },
-
-  confettiOne: {
-    width: 8,
-    height: 8,
-    top: '18%',
-    left: '20%',
-    transform: [
-      {
-        rotate: '20deg',
-      },
-    ],
-    backgroundColor: Colors.accent,
-  },
-
-  confettiTwo: {
-    width: 6,
-    height: 6,
-    top: '14%',
-    left: '72%',
-    transform: [
-      {
-        rotate: '-15deg',
-      },
-    ],
-    backgroundColor: '#A6631A',
-  },
-
-  confettiThree: {
-    width: 7,
-    height: 7,
-    top: '28%',
-    left: '82%',
-    transform: [
-      {
-        rotate: '40deg',
-      },
-    ],
-    backgroundColor: '#3A5A78',
-  },
-
-  confettiFour: {
-    width: 6,
-    height: 6,
-    top: '22%',
-    left: '10%',
-    transform: [
-      {
-        rotate: '-30deg',
-      },
-    ],
-    backgroundColor: Colors.accent,
-  },
-
-  confettiFive: {
-    width: 8,
-    height: 8,
-    top: '10%',
-    left: '48%',
-    transform: [
-      {
-        rotate: '10deg',
-      },
-    ],
-    backgroundColor: Colors.succes,
+    fontSize: 14,
+    color: Colors.accent,
   },
 });

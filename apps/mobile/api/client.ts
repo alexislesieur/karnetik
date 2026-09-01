@@ -21,6 +21,22 @@ export type ResendVerificationData = {
   email: string;
 };
 
+export type ForgotPasswordData = {
+  email: string;
+};
+
+export type VerifyPasswordResetData = {
+  email: string;
+  code: string;
+};
+
+export type ResetPasswordData = {
+  email: string;
+  code: string;
+  password: string;
+  password_confirmation: string;
+};
+
 export type AuthResponse = {
   user: {
     id: number;
@@ -42,6 +58,18 @@ export type VerifyEmailResponse = {
 };
 
 export type ResendVerificationResponse = {
+  message: string;
+};
+
+export type ForgotPasswordResponse = {
+  message: string;
+};
+
+export type VerifyPasswordResetResponse = {
+  message: string;
+};
+
+export type ResetPasswordResponse = {
   message: string;
 };
 
@@ -118,7 +146,9 @@ export async function verifyEmail(
     },
   );
 
-  return parseResponse<VerifyEmailResponse>(response);
+  return parseResponse<VerifyEmailResponse>(
+    response,
+  );
 }
 
 export async function resendVerification(
@@ -137,6 +167,86 @@ export async function resendVerification(
   );
 
   return parseResponse<ResendVerificationResponse>(
+    response,
+  );
+}
+
+export async function forgotPassword(
+  data: ForgotPasswordData,
+): Promise<ForgotPasswordResponse> {
+  const response = await fetch(
+    `${API_URL}/api/password/forgot`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  return parseResponse<ForgotPasswordResponse>(
+    response,
+  );
+}
+
+export async function verifyPasswordReset(
+  data: VerifyPasswordResetData,
+): Promise<VerifyPasswordResetResponse> {
+  const response = await fetch(
+    `${API_URL}/api/password/verify`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  return parseResponse<VerifyPasswordResetResponse>(
+    response,
+  );
+}
+
+export async function resendPasswordReset(
+  data: ForgotPasswordData,
+): Promise<ForgotPasswordResponse> {
+  const response = await fetch(
+    `${API_URL}/api/password/forgot`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  return parseResponse<ForgotPasswordResponse>(
+    response,
+  );
+}
+
+export async function resetPassword(
+  data: ResetPasswordData,
+): Promise<ResetPasswordResponse> {
+  const response = await fetch(
+    `${API_URL}/api/password/reset`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  return parseResponse<ResetPasswordResponse>(
     response,
   );
 }
