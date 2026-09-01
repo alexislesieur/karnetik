@@ -2,15 +2,72 @@ import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { router } from 'expo-router';
+
 import { Colors } from '@/constants/colors';
+import {
+  getCurrentUser,
+  getStoredToken,
+} from '@/api/client';
 
 export default function SplashScreen() {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace('/welcome');
-    }, 1500);
+    let mounted = true;
 
-    return () => clearTimeout(timer);
+    async function bootstrap() {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 1500);
+      });
+
+      if (!mounted) {
+        return;
+      }
+
+      try {
+        const token = await getStoredToken();
+
+        if (!token) {
+          router.replace('/(auth)/welcome');
+          return;
+        }
+
+        const user = await getCurrentUser();
+
+        if (!mounted) {
+          return;
+        }
+
+        if (!user.email_verifie) {
+          router.replace({
+            pathname: '/(auth)/verify-email',
+            params: {
+              email: user.email,
+              mode: 'email-verification',
+            },
+          });
+
+          return;
+        }
+
+        if (!user.onboarding_completed) {
+          router.replace('/(onboarding)/name');
+          return;
+        }
+
+        router.replace('/(app)/home');
+      } catch {
+        if (!mounted) {
+          return;
+        }
+
+        router.replace('/(auth)/welcome');
+      }
+    }
+
+    bootstrap();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (

@@ -45,9 +45,7 @@ export default function ForgotPasswordScreen() {
       setError(null);
       setIsLoading(true);
 
-      await forgotPassword({
-        email: normalizedEmail,
-      });
+      await forgotPassword(normalizedEmail);
 
       router.push({
         pathname: '/verify-email',

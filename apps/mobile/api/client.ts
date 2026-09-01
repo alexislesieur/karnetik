@@ -1,264 +1,272 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = 'http://192.168.1.20:8000';
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
-const TOKEN_KEY = 'token';
+const TOKEN_KEY = 'karnetik_token';
+const USER_KEY = 'karnetik_user';
 
-export type RegisterData = {
-  prenom?: string;
+export type User = {
+  id: number;
+  prenom: string | null;
   email: string;
-  password: string;
-  password_confirmation: string;
+  email_verifie: boolean;
+  onboarding_completed: boolean;
 };
 
-export type LoginData = {
-  email: string;
-  password: string;
-};
-
-export type VerifyEmailData = {
-  email: string;
-  code: string;
-};
-
-export type ResendVerificationData = {
-  email: string;
-};
-
-export type ForgotPasswordData = {
-  email: string;
-};
-
-export type VerifyPasswordResetData = {
-  email: string;
-  code: string;
-};
-
-export type ResetPasswordData = {
-  email: string;
-  code: string;
-  password: string;
-  password_confirmation: string;
-};
-
-export type AuthResponse = {
-  user: {
-    id: number;
-    prenom: string | null;
-    email: string;
-    email_verifie: boolean;
-  };
+type AuthResponse = {
+  user: User;
   token: string;
 };
 
-export type VerifyEmailResponse = {
-  message: string;
-  user: {
-    id: number;
-    prenom: string | null;
-    email: string;
-    email_verifie: boolean;
-  };
+type ApiErrorResponse = {
+  message?: string;
+  errors?: Record<string, string[]>;
 };
 
-export type ResendVerificationResponse = {
-  message: string;
-};
-
-export type ForgotPasswordResponse = {
-  message: string;
-};
-
-export type VerifyPasswordResetResponse = {
-  message: string;
-};
-
-export type ResetPasswordResponse = {
-  message: string;
-};
-
-async function parseResponse<T>(
-  response: Response,
-): Promise<T> {
-  const body = await response.json();
-
-  if (!response.ok) {
-    const validationErrors = body.errors
-      ? Object.values(body.errors)
-          .flat()
-          .join('\n')
-      : null;
-
-    throw new Error(
-      validationErrors ??
-        body.message ??
-        'Une erreur est survenue.',
-    );
-  }
-
-  return body as T;
-}
-
-async function saveToken(token: string): Promise<void> {
-  await AsyncStorage.setItem(TOKEN_KEY, token);
-}
-
-export async function getToken(): Promise<string | null> {
+async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem(TOKEN_KEY);
 }
 
-export async function clearToken(): Promise<void> {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+async function request<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const token = await getToken();
+
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  const data = (await response.json().catch(() => null)) as
+    | T
+    | ApiErrorResponse
+    | null;
+
+  if (!response.ok) {
+    const errorData = data as ApiErrorResponse | null;
+
+    if (errorData?.errors) {
+      const firstError = Object.values(
+        errorData.errors,
+      )[0]?.[0];
+
+      if (firstError) {
+        throw new Error(firstError);
+      }
+    }
+
+    throw new Error(
+      errorData?.message ??
+        'Une erreur est survenue. Veuillez réessayer.',
+    );
+  }
+
+  return data as T;
 }
 
-export async function register(
-  data: RegisterData,
-): Promise<AuthResponse> {
-  const response = await fetch(
-    `${API_URL}/api/register`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    },
-  );
-
-  const result =
-    await parseResponse<AuthResponse>(response);
-
-  await saveToken(result.token);
-
-  return result;
+async function saveAuth(
+  response: AuthResponse,
+): Promise<void> {
+  await AsyncStorage.multiSet([
+    [TOKEN_KEY, response.token],
+    [USER_KEY, JSON.stringify(response.user)],
+  ]);
 }
 
-export async function login(
-  data: LoginData,
-): Promise<AuthResponse> {
-  const response = await fetch(
-    `${API_URL}/api/login`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    },
-  );
+export async function register(params: {
+  prenom?: string;
+  email: string;
+  password: string;
+  password_confirmation?: string;
+}): Promise<AuthResponse> {
+  const response = await request<AuthResponse>('/register', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
 
-  const result =
-    await parseResponse<AuthResponse>(response);
+  await saveAuth(response);
 
-  await saveToken(result.token);
-
-  return result;
+  return response;
 }
 
-export async function verifyEmail(
-  data: VerifyEmailData,
-): Promise<VerifyEmailResponse> {
-  const response = await fetch(
-    `${API_URL}/api/email/verify`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    },
-  );
+export async function login(params: {
+  email: string;
+  password: string;
+}): Promise<AuthResponse> {
+  const response = await request<AuthResponse>('/login', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
 
-  return parseResponse<VerifyEmailResponse>(
-    response,
-  );
+  await saveAuth(response);
+
+  return response;
 }
 
-export async function resendVerification(
-  data: ResendVerificationData,
-): Promise<ResendVerificationResponse> {
-  const response = await fetch(
-    `${API_URL}/api/email/resend`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    },
+export async function getCurrentUser(): Promise<User> {
+  const response = await request<User>('/user', {
+    method: 'GET',
+  });
+
+  await AsyncStorage.setItem(
+    USER_KEY,
+    JSON.stringify(response),
   );
 
-  return parseResponse<ResendVerificationResponse>(
-    response,
+  return response;
+}
+
+export async function getStoredUser(): Promise<User | null> {
+  const value = await AsyncStorage.getItem(USER_KEY);
+
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value) as User;
+  } catch {
+    await AsyncStorage.removeItem(USER_KEY);
+    return null;
+  }
+}
+
+export async function completeOnboarding(
+  prenom: string,
+): Promise<{
+  message: string;
+  user: User;
+}> {
+  const response = await request<{
+    message: string;
+    user: User;
+  }>('/onboarding/name', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      prenom: prenom.trim(),
+    }),
+  });
+
+  await AsyncStorage.setItem(
+    USER_KEY,
+    JSON.stringify(response.user),
   );
+
+  return response;
 }
 
 export async function forgotPassword(
-  data: ForgotPasswordData,
-): Promise<ForgotPasswordResponse> {
-  const response = await fetch(
-    `${API_URL}/api/password/forgot`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    },
-  );
+  emailOrParams: string | { email: string },
+): Promise<{ message: string }> {
+  const email =
+    typeof emailOrParams === 'string'
+      ? emailOrParams
+      : emailOrParams.email;
 
-  return parseResponse<ForgotPasswordResponse>(
-    response,
-  );
+  return request<{ message: string }>('/password/forgot', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+    }),
+  });
 }
 
-export async function verifyPasswordReset(
-  data: VerifyPasswordResetData,
-): Promise<VerifyPasswordResetResponse> {
-  const response = await fetch(
-    `${API_URL}/api/password/verify`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    },
-  );
+export async function verifyPasswordReset(params: {
+  email: string;
+  code: string;
+}): Promise<{ message: string }> {
+  return request<{ message: string }>('/password/verify', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: params.email.trim().toLowerCase(),
+      code: params.code,
+    }),
+  });
+}
 
-  return parseResponse<VerifyPasswordResetResponse>(
-    response,
-  );
+export async function resetPassword(params: {
+  email: string;
+  code: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<{ message: string }> {
+  return request<{ message: string }>('/password/reset', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: params.email.trim().toLowerCase(),
+      code: params.code,
+      password: params.password,
+      password_confirmation: params.password_confirmation,
+    }),
+  });
+}
+
+export async function verifyEmail(params: {
+  email: string;
+  code: string;
+}): Promise<{ message: string }> {
+  return request<{ message: string }>('/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: params.email.trim().toLowerCase(),
+      code: params.code,
+    }),
+  });
+}
+
+export async function resendEmailVerification(
+  emailOrParams: string | { email: string },
+): Promise<{ message: string }> {
+  const email =
+    typeof emailOrParams === 'string'
+      ? emailOrParams
+      : emailOrParams.email;
+
+  return request<{ message: string }>('/email/resend', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+    }),
+  });
+}
+
+export async function resendVerification(
+  emailOrParams: string | { email: string },
+): Promise<{ message: string }> {
+  return resendEmailVerification(emailOrParams);
 }
 
 export async function resendPasswordReset(
-  data: ForgotPasswordData,
-): Promise<ForgotPasswordResponse> {
-  return forgotPassword(data);
+  emailOrParams: string | { email: string },
+): Promise<{ message: string }> {
+  return forgotPassword(emailOrParams);
 }
 
-export async function resetPassword(
-  data: ResetPasswordData,
-): Promise<ResetPasswordResponse> {
-  const response = await fetch(
-    `${API_URL}/api/password/reset`,
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    },
-  );
+export async function clearToken(): Promise<void> {
+  await AsyncStorage.multiRemove([
+    TOKEN_KEY,
+    USER_KEY,
+  ]);
+}
 
-  return parseResponse<ResetPasswordResponse>(
-    response,
-  );
+export async function isAuthenticated(): Promise<boolean> {
+  const token = await getToken();
+
+  return token !== null;
+}
+
+export async function getStoredToken(): Promise<string | null> {
+  return getToken();
 }

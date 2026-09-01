@@ -15,6 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
     'email',
     'password',
     'email_verified_at',
+    'onboarding_completed',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -31,6 +32,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'onboarding_completed' => 'boolean',
             'password' => 'hashed',
         ];
     }

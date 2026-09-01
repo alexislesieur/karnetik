@@ -12,8 +12,8 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { Colors } from '@/constants/colors';
 import { login } from '@/api/client';
+import { Colors } from '@/constants/colors';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -61,6 +61,11 @@ export default function LoginScreen() {
         return;
       }
 
+      if (!response.user.onboarding_completed) {
+        router.replace('/(onboarding)/name');
+        return;
+      }
+
       router.replace('/(app)/home');
     } catch (err) {
       const message =
@@ -69,8 +74,12 @@ export default function LoginScreen() {
           : 'Impossible de vous connecter.';
 
       if (
-        message.toLowerCase().includes('vérifier votre adresse email') ||
-        message.toLowerCase().includes('verifier votre adresse email')
+        message
+          .toLowerCase()
+          .includes('vérifier votre adresse email') ||
+        message
+          .toLowerCase()
+          .includes('verifier votre adresse email')
       ) {
         router.replace({
           pathname: '/(auth)/verify-email',
@@ -90,7 +99,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <Pressable
+    <View
       style={[
         styles.screen,
         {
@@ -98,7 +107,6 @@ export default function LoginScreen() {
           paddingBottom: insets.bottom,
         },
       ]}
-      onPress={Keyboard.dismiss}
     >
       <View style={styles.hero}>
         <Pressable
@@ -106,7 +114,11 @@ export default function LoginScreen() {
           onPress={() => router.replace('/(auth)/welcome')}
           disabled={isLoading}
         >
-          <Svg width={18} height={18} viewBox="0 0 24 24">
+          <Svg
+            width={18}
+            height={18}
+            viewBox="0 0 24 24"
+          >
             <Path
               d="M15 6l-6 6 6 6"
               fill="none"
@@ -120,14 +132,18 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.sheet}>
-        <Text style={styles.title}>Bon retour</Text>
+        <Text style={styles.title}>
+          Bon retour
+        </Text>
 
         <Text style={styles.subtitle}>
           Connectez-vous à votre carnet
         </Text>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>
+            Email
+          </Text>
 
           <View style={styles.inputWrap}>
             <TextInput
@@ -143,6 +159,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="email"
+              textContentType="emailAddress"
               editable={!isLoading}
               returnKeyType="next"
             />
@@ -150,7 +167,9 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Mot de passe</Text>
+          <Text style={styles.label}>
+            Mot de passe
+          </Text>
 
           <View style={styles.inputWrap}>
             <TextInput
@@ -166,6 +185,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="password"
+              textContentType="password"
               editable={!isLoading}
               returnKeyType="done"
               onSubmitEditing={handleLogin}
@@ -173,10 +193,16 @@ export default function LoginScreen() {
 
             <Pressable
               style={styles.eyeButton}
-              onPress={() => setShowPassword((value) => !value)}
+              onPress={() =>
+                setShowPassword((value) => !value)
+              }
               disabled={isLoading}
             >
-              <Svg width={18} height={18} viewBox="0 0 24 24">
+              <Svg
+                width={18}
+                height={18}
+                viewBox="0 0 24 24"
+              >
                 <Path
                   d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"
                   fill="none"
@@ -199,7 +225,9 @@ export default function LoginScreen() {
 
         <Pressable
           style={styles.forgot}
-          onPress={() => router.push('/(auth)/forgot-password')}
+          onPress={() =>
+            router.push('/(auth)/forgot-password')
+          }
           disabled={isLoading}
         >
           <Text style={styles.forgotText}>
@@ -247,7 +275,7 @@ export default function LoginScreen() {
           </Pressable>
         </View>
       </View>
-    </Pressable>
+    </View>
   );
 }
 

@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -7,16 +9,60 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { clearToken } from '@/api/client';
+import {
+  clearToken,
+  getStoredUser,
+  type User,
+} from '@/api/client';
 import { Colors } from '@/constants/colors';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const storedUser = await getStoredUser();
+
+        if (!storedUser) {
+          router.replace('/(auth)/welcome');
+          return;
+        }
+
+        setUser(storedUser);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadUser();
+  }, []);
+
   async function handleLogout() {
-    await clearToken();
-    router.replace('/(auth)/welcome');
+    try {
+      setIsLoggingOut(true);
+
+      await clearToken();
+
+      router.replace('/(auth)/welcome');
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color={Colors.accent} />
+      </View>
+    );
+  }
+
+  const prenom = user?.prenom?.trim();
 
   return (
     <View
@@ -30,27 +76,42 @@ export default function HomeScreen() {
     >
       <View style={styles.content}>
         <Text style={styles.title}>
-          Bienvenue sur Karnetik
+          Bonjour{prenom ? ` ${prenom}` : ''} !
         </Text>
 
         <Text style={styles.subtitle}>
-          Ton compte a bien été créé.
+          Ton carnet est prêt.
         </Text>
       </View>
 
       <Pressable
-        style={styles.logoutButton}
+        style={[
+          styles.logoutButton,
+          isLoggingOut && styles.logoutButtonDisabled,
+        ]}
         onPress={handleLogout}
+        disabled={isLoggingOut}
       >
-        <Text style={styles.logoutButtonText}>
-          Se déconnecter
-        </Text>
+        {isLoggingOut ? (
+          <ActivityIndicator color={Colors.accent} />
+        ) : (
+          <Text style={styles.logoutButtonText}>
+            Se déconnecter
+          </Text>
+        )}
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+  },
+
   container: {
     flex: 1,
     alignItems: 'center',
@@ -87,6 +148,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
+  },
+
+  logoutButtonDisabled: {
+    opacity: 0.7,
   },
 
   logoutButtonText: {

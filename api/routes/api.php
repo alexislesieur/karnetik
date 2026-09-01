@@ -2,14 +2,10 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EmailVerificationController;
+use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\PasswordResetController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
-
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
 
 Route::post('/register', [
     AuthController::class,
@@ -45,6 +41,17 @@ Route::post('/password/reset', [
     PasswordResetController::class,
     'reset',
 ]);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
+    Route::patch('/onboarding/name', [
+        OnboardingController::class,
+        'complete',
+    ]);
+});
 
 Route::get('/health', function () {
     return response()->json([

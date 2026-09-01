@@ -8,78 +8,52 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
 import { router } from 'expo-router';
-import { Colors } from '@/constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { register } from '@/api/client';
+import { Colors } from '@/constants/colors';
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordConfirmation, setPasswordConfirmation] =
-    useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
 
-  const [showPassword, setShowPassword] =
-    useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const [showPasswordConfirmation, setShowPasswordConfirmation] =
-    useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [cguAccepted, setCguAccepted] =
-    useState(false);
-
-  const [marketingAccepted, setMarketingAccepted] =
-    useState(false);
-
-  const [isLoading, setIsLoading] =
-    useState(false);
-
-  const [errorMessage, setErrorMessage] =
-    useState('');
-
-  const [cguError, setCguError] =
-    useState(false);
-
-  const passwordsMatch =
-    passwordConfirmation.length > 0 &&
-    password === passwordConfirmation;
-
-  const passwordsDoNotMatch =
-    passwordConfirmation.length > 0 &&
-    password !== passwordConfirmation;
-
-  const passwordStrength =
-    getPasswordStrength(password);
-
-  async function handleRegister() {
+  async function handleSignup() {
     Keyboard.dismiss();
+    setError(null);
 
-    setErrorMessage('');
-    setCguError(false);
+    const normalizedEmail = email.trim().toLowerCase();
 
-    if (!email.trim()) {
-      setErrorMessage(
-        'Veuillez renseigner votre adresse email.',
-      );
+    if (!normalizedEmail) {
+      setError('Veuillez saisir votre adresse email.');
       return;
     }
 
     if (!password) {
-      setErrorMessage(
-        'Veuillez renseigner votre mot de passe.',
+      setError('Veuillez saisir un mot de passe.');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError(
+        'Le mot de passe doit contenir au moins 8 caractères.',
       );
       return;
     }
 
     if (password !== passwordConfirmation) {
-      return;
-    }
-
-    if (!cguAccepted) {
-      setCguError(true);
+      setError(
+        'Les mots de passe ne correspondent pas.',
+      );
       return;
     }
 
@@ -87,76 +61,59 @@ export default function SignupScreen() {
       setIsLoading(true);
 
       const response = await register({
-        email: email.trim(),
+        email: normalizedEmail,
         password,
-        password_confirmation:
-          passwordConfirmation,
+        password_confirmation: passwordConfirmation,
       });
-
-      console.log(
-        'Inscription réussie :',
-        response.user,
-      );
 
       router.replace({
-        pathname: '/verify-email',
+        pathname: '/(auth)/verify-email',
         params: {
-          email: email.trim(),
+          email: response.user.email,
+          mode: 'email-verification',
         },
       });
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'Une erreur est survenue lors de l’inscription.',
-      );
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Impossible de créer votre compte.';
+
+      setError(message);
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <Pressable
+    <View
       style={[
-        styles.container,
+        styles.screen,
         {
           paddingTop: insets.top,
+          paddingBottom: insets.bottom,
         },
       ]}
-      onPress={Keyboard.dismiss}
     >
       <View style={styles.hero}>
         <Pressable
           style={styles.backButton}
-          onPress={() => {
-            Keyboard.dismiss();
-            router.back();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Retour"
+          onPress={() => router.replace('/(auth)/welcome')}
+          disabled={isLoading}
         >
-          <Svg
-            width={18}
-            height={18}
-            viewBox="0 0 24 24"
-          >
-            <Path
-              d="M15 6l-6 6 6 6"
-              fill="none"
-              stroke={Colors.texte}
-              strokeWidth={2}
-            />
-          </Svg>
+          <Text style={styles.backArrow}>
+            ‹
+          </Text>
         </Pressable>
       </View>
 
       <View style={styles.sheet}>
         <Text style={styles.title}>
-          Créer un compte
+          Créer votre compte
         </Text>
 
         <Text style={styles.subtitle}>
-          Ça prend moins d'une minute
+          Quelques secondes pour commencer.
         </Text>
 
         <View style={styles.field}>
@@ -167,16 +124,19 @@ export default function SignupScreen() {
           <View style={styles.inputWrap}>
             <TextInput
               style={styles.input}
+              value={email}
+              onChangeText={(value) => {
+                setEmail(value);
+                setError(null);
+              }}
               placeholder="nom@exemple.fr"
               placeholderTextColor="#A9AFAD"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              value={email}
-              onChangeText={(value) => {
-                setEmail(value);
-                setErrorMessage('');
-              }}
+              autoComplete="email"
+              textContentType="emailAddress"
+              editable={!isLoading}
               returnKeyType="next"
             />
           </View>
@@ -189,50 +149,34 @@ export default function SignupScreen() {
 
           <View style={styles.inputWrap}>
             <TextInput
-              style={styles.inputPassword}
+              style={styles.input}
+              value={password}
+              onChangeText={(value) => {
+                setPassword(value);
+                setError(null);
+              }}
               placeholder="••••••••"
               placeholderTextColor="#A9AFAD"
               secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              editable={!isLoading}
               returnKeyType="next"
             />
 
             <Pressable
-              style={styles.eyeButton}
+              style={styles.toggleButton}
               onPress={() =>
-                setShowPassword(
-                  (value) => !value,
-                )
+                setShowPassword((value) => !value)
               }
-              accessibilityRole="button"
-              accessibilityLabel={
-                showPassword
-                  ? 'Masquer le mot de passe'
-                  : 'Afficher le mot de passe'
-              }
+              disabled={isLoading}
             >
-              <EyeIcon />
+              <Text style={styles.toggleText}>
+                {showPassword ? 'Masquer' : 'Voir'}
+              </Text>
             </Pressable>
-          </View>
-
-          <View style={styles.strengthRow}>
-            {[0, 1, 2].map((index) => (
-              <View
-                key={index}
-                style={[
-                  styles.strengthBar,
-                  index < passwordStrength && {
-                    backgroundColor:
-                      getStrengthColor(
-                        passwordStrength,
-                      ),
-                  },
-                ]}
-              />
-            ))}
           </View>
         </View>
 
@@ -241,333 +185,90 @@ export default function SignupScreen() {
             Confirmer le mot de passe
           </Text>
 
-          <View
-            style={[
-              styles.inputWrap,
-              passwordsDoNotMatch &&
-                styles.inputWrapError,
-            ]}
-          >
+          <View style={styles.inputWrap}>
             <TextInput
-              style={styles.inputPassword}
-              placeholder="••••••••"
-              placeholderTextColor="#A9AFAD"
-              secureTextEntry={
-                !showPasswordConfirmation
-              }
+              style={styles.input}
               value={passwordConfirmation}
               onChangeText={(value) => {
-                setPasswordConfirmation(
-                  value,
-                );
-                setErrorMessage('');
+                setPasswordConfirmation(value);
+                setError(null);
               }}
+              placeholder="••••••••"
+              placeholderTextColor="#A9AFAD"
+              secureTextEntry={!showConfirmation}
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              editable={!isLoading}
               returnKeyType="done"
-              onSubmitEditing={
-                handleRegister
-              }
+              onSubmitEditing={handleSignup}
             />
 
             <Pressable
-              style={styles.eyeButton}
+              style={styles.toggleButton}
               onPress={() =>
-                setShowPasswordConfirmation(
-                  (value) => !value,
-                )
+                setShowConfirmation((value) => !value)
               }
-              accessibilityRole="button"
-              accessibilityLabel={
-                showPasswordConfirmation
-                  ? 'Masquer le mot de passe'
-                  : 'Afficher le mot de passe'
-              }
+              disabled={isLoading}
             >
-              <EyeIcon />
+              <Text style={styles.toggleText}>
+                {showConfirmation ? 'Masquer' : 'Voir'}
+              </Text>
             </Pressable>
           </View>
-
-          {passwordsDoNotMatch && (
-            <View style={styles.feedbackRow}>
-              <CircleIcon
-                color={Colors.erreur}
-              />
-
-              <Text style={styles.errorText}>
-                Les mots de passe ne correspondent pas
-              </Text>
-            </View>
-          )}
-
-          {passwordsMatch && (
-            <View style={styles.feedbackRow}>
-              <CircleIcon
-                color={Colors.succes}
-                check
-              />
-
-              <Text style={styles.successText}>
-                Les mots de passe correspondent
-              </Text>
-            </View>
-          )}
         </View>
 
-        <Pressable
-          style={styles.consent}
-          onPress={() => {
-            setCguAccepted(
-              (value) => !value,
-            );
-            setCguError(false);
-          }}
-          accessibilityRole="checkbox"
-          accessibilityState={{
-            checked: cguAccepted,
-          }}
-        >
-          <Checkbox checked={cguAccepted} />
-
-          <Text style={styles.consentText}>
-            J'accepte les{' '}
-            <Text style={styles.consentLink}>
-              conditions générales d'utilisation
-            </Text>{' '}
-            et la{' '}
-            <Text style={styles.consentLink}>
-              politique de confidentialité
-            </Text>
-          </Text>
-        </Pressable>
-
-        {cguError && (
-          <Text style={styles.consentError}>
-            Cochez cette case pour continuer
-          </Text>
-        )}
-
-        <Pressable
-          style={styles.consent}
-          onPress={() =>
-            setMarketingAccepted(
-              (value) => !value,
-            )
-          }
-          accessibilityRole="checkbox"
-          accessibilityState={{
-            checked: marketingAccepted,
-          }}
-        >
-          <Checkbox
-            checked={marketingAccepted}
-          />
-
-          <Text style={styles.consentText}>
-            J'accepte de recevoir des conseils
-            d'entretien et actualités Karnetik
-            par email{' '}
-            <Text style={styles.optional}>
-              (facultatif)
-            </Text>
-          </Text>
-        </Pressable>
-
-        {errorMessage !== '' && (
-          <Text style={styles.formError}>
-            {errorMessage}
+        {error && (
+          <Text style={styles.errorText}>
+            {error}
           </Text>
         )}
 
         <Pressable
           style={[
             styles.primaryButton,
-            isLoading &&
-              styles.primaryButtonDisabled,
+            isLoading && styles.primaryButtonDisabled,
           ]}
-          onPress={handleRegister}
+          onPress={handleSignup}
           disabled={isLoading}
-          accessibilityRole="button"
-          accessibilityState={{
-            disabled: isLoading,
-          }}
         >
           {isLoading ? (
-            <ActivityIndicator
-              color={Colors.surface}
-            />
+            <ActivityIndicator color={Colors.surface} />
           ) : (
-            <Text
-              style={
-                styles.primaryButtonText
-              }
-            >
+            <Text style={styles.primaryButtonText}>
               Créer mon compte
             </Text>
           )}
         </Pressable>
 
-        <Text style={styles.switchLine}>
-          Déjà un compte ?{' '}
-          <Text
-            style={styles.switchLink}
-            onPress={() => {
-              Keyboard.dismiss();
-              router.push('/login');
-            }}
-          >
-            Se connecter
+        <View style={styles.switchLine}>
+          <Text style={styles.switchText}>
+            Déjà un compte ?{' '}
           </Text>
-        </Text>
+
+          <Pressable
+            onPress={() => router.replace('/(auth)/login')}
+            disabled={isLoading}
+          >
+            <Text style={styles.switchLink}>
+              Se connecter
+            </Text>
+          </Pressable>
+        </View>
       </View>
-    </Pressable>
-  );
-}
-
-function getPasswordStrength(
-  password: string,
-) {
-  let score = 0;
-
-  if (password.length >= 6) {
-    score++;
-  }
-
-  if (password.length >= 10) {
-    score++;
-  }
-
-  if (
-    /[0-9]/.test(password) &&
-    /[A-Z]/.test(password)
-  ) {
-    score++;
-  }
-
-  return score;
-}
-
-function getStrengthColor(
-  strength: number,
-) {
-  if (strength === 1) {
-    return Colors.erreur;
-  }
-
-  if (strength === 2) {
-    return Colors.avertissement;
-  }
-
-  return Colors.succes;
-}
-
-function EyeIcon() {
-  return (
-    <Svg
-      width={18}
-      height={18}
-      viewBox="0 0 24 24"
-    >
-      <Path
-        d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"
-        fill="none"
-        stroke={Colors.attenue}
-        strokeWidth={2}
-      />
-
-      <Circle
-        cx="12"
-        cy="12"
-        r="3"
-        fill="none"
-        stroke={Colors.attenue}
-        strokeWidth={2}
-      />
-    </Svg>
-  );
-}
-
-function CircleIcon({
-  color,
-  check = false,
-}: {
-  color: string;
-  check?: boolean;
-}) {
-  return (
-    <Svg
-      width={12}
-      height={12}
-      viewBox="0 0 24 24"
-    >
-      <Circle
-        cx="12"
-        cy="12"
-        r="9"
-        fill="none"
-        stroke={color}
-        strokeWidth={2.5}
-      />
-
-      {check ? (
-        <Path
-          d="M8.5 12.5l2.5 2.5 4.5-5"
-          fill="none"
-          stroke={color}
-          strokeWidth={2.5}
-        />
-      ) : (
-        <Path
-          d="M12 8v5M12 16h.01"
-          fill="none"
-          stroke={color}
-          strokeWidth={2.5}
-        />
-      )}
-    </Svg>
-  );
-}
-
-function Checkbox({
-  checked,
-}: {
-  checked: boolean;
-}) {
-  return (
-    <View
-      style={[
-        styles.checkbox,
-        checked &&
-          styles.checkboxChecked,
-      ]}
-    >
-      {checked && (
-        <Svg
-          width={12}
-          height={12}
-          viewBox="0 0 24 24"
-        >
-          <Path
-            d="M4 12l5 5L20 6"
-            fill="none"
-            stroke={Colors.surface}
-            strokeWidth={3}
-          />
-        </Svg>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: Colors.surface,
   },
 
   hero: {
     height: 56,
-    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
@@ -576,11 +277,18 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
-    backgroundColor: Colors.fond,
     borderRadius: 12,
+    backgroundColor: Colors.fond,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
+  },
+
+  backArrow: {
+    fontFamily: 'Roboto_400Regular',
+    fontSize: 30,
+    lineHeight: 32,
+    color: Colors.texte,
   },
 
   sheet: {
@@ -592,16 +300,17 @@ const styles = StyleSheet.create({
 
   title: {
     fontFamily: 'Roboto_700Bold',
-    fontSize: 21,
+    fontSize: 22,
     color: Colors.texte,
-    marginBottom: 4,
+    marginBottom: 8,
   },
 
   subtitle: {
     fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 23,
     color: Colors.attenue,
-    marginBottom: 24,
+    marginBottom: 26,
   },
 
   field: {
@@ -616,6 +325,7 @@ const styles = StyleSheet.create({
   },
 
   inputWrap: {
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.fond,
@@ -624,121 +334,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 
-  inputWrapError: {
-    borderColor: Colors.erreur,
-  },
-
   input: {
     flex: 1,
+    minHeight: 46,
     paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingVertical: 12,
     fontFamily: 'Roboto_400Regular',
     fontSize: 16,
     color: Colors.texte,
   },
 
-  inputPassword: {
-    flex: 1,
+  toggleButton: {
     paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 16,
-    color: Colors.texte,
-  },
-
-  eyeButton: {
     minHeight: 44,
-    minWidth: 44,
-    paddingHorizontal: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  strengthRow: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 7,
-  },
-
-  strengthBar: {
-    flex: 1,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: Colors.bordure,
-  },
-
-  feedbackRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 7,
+  toggleText: {
+    fontFamily: 'Roboto_500Medium',
+    fontSize: 13,
+    color: Colors.accent,
   },
 
   errorText: {
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 13.5,
-    color: Colors.erreur,
-  },
-
-  successText: {
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 13.5,
-    color: Colors.succes,
-  },
-
-  consent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 13,
-  },
-
-  checkbox: {
-    width: 19,
-    height: 19,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: Colors.bordure,
-    backgroundColor: Colors.fond,
-    flexShrink: 0,
-    marginTop: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  checkboxChecked: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.accent,
-  },
-
-  consentText: {
-    flex: 1,
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
-    lineHeight: 21.7,
-    color: Colors.attenue,
-  },
-
-  consentLink: {
-    color: Colors.accent,
-    fontFamily: 'Roboto_500Medium',
-  },
-
-  optional: {
-    color: Colors.attenue,
-  },
-
-  consentError: {
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 13.5,
-    lineHeight: 19,
-    color: Colors.erreur,
-    marginTop: -3,
-    marginBottom: 13,
-    marginLeft: 30,
-  },
-
-  formError: {
     fontFamily: 'Roboto_400Regular',
     fontSize: 13.5,
     lineHeight: 19,
@@ -749,12 +368,12 @@ const styles = StyleSheet.create({
   primaryButton: {
     width: '100%',
     minHeight: 44,
-    backgroundColor: Colors.accent,
+    marginTop: 8,
     borderRadius: 12,
-    paddingVertical: 15,
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
+    paddingVertical: 15,
   },
 
   primaryButtonDisabled: {
@@ -768,15 +387,21 @@ const styles = StyleSheet.create({
   },
 
   switchLine: {
-    textAlign: 'center',
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
-    color: Colors.attenue,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 18,
   },
 
+  switchText: {
+    fontFamily: 'Roboto_400Regular',
+    fontSize: 14,
+    color: Colors.attenue,
+  },
+
   switchLink: {
-    color: Colors.accent,
     fontFamily: 'Roboto_500Medium',
+    fontSize: 14,
+    color: Colors.accent,
   },
 });

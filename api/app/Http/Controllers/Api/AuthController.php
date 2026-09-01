@@ -22,6 +22,7 @@ class AuthController extends Controller
             'prenom' => $validated['prenom'] ?? null,
             'email' => $validated['email'],
             'password' => $validated['password'],
+            'onboarding_completed' => false,
         ]);
 
         $code = $this->createVerificationCode($user);
@@ -34,12 +35,7 @@ class AuthController extends Controller
             ->plainTextToken;
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'prenom' => $user->prenom,
-                'email' => $user->email,
-                'email_verifie' => false,
-            ],
+            'user' => $this->userPayload($user, false),
             'token' => $token,
         ], 201);
     }
@@ -82,14 +78,22 @@ class AuthController extends Controller
             ->plainTextToken;
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'prenom' => $user->prenom,
-                'email' => $user->email,
-                'email_verifie' => true,
-            ],
+            'user' => $this->userPayload($user, true),
             'token' => $token,
         ]);
+    }
+
+    private function userPayload(
+        User $user,
+        bool $emailVerifie
+    ): array {
+        return [
+            'id' => $user->id,
+            'prenom' => $user->prenom,
+            'email' => $user->email,
+            'email_verifie' => $emailVerifie,
+            'onboarding_completed' => $user->onboarding_completed,
+        ];
     }
 
     private function createVerificationCode(User $user): string
