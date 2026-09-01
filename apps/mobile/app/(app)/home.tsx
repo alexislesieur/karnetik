@@ -1,20 +1,33 @@
-import { StyleSheet, Text, View, Pressable } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { clearToken } from '@/api/client';
 import { Colors } from '@/constants/colors';
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
+
   async function handleLogout() {
-    try {
-      await AsyncStorage.removeItem('token');
-    } finally {
-      router.replace('/login');
-    }
+    await clearToken();
+    router.replace('/(auth)/welcome');
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top + 32,
+          paddingBottom: insets.bottom + 20,
+        },
+      ]}
+    >
       <View style={styles.content}>
         <Text style={styles.title}>
           Bienvenue sur Karnetik
@@ -43,8 +56,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 28,
-    paddingTop: 120,
-    paddingBottom: 40,
     backgroundColor: Colors.surface,
   },
 

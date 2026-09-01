@@ -1,11 +1,23 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path, Rect } from 'react-native-svg';
+
 import { Colors } from '@/constants/colors';
 
 export default function WelcomeScreen() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+        },
+      ]}
+    >
       <View style={[styles.blob, styles.blob1]} />
       <View style={[styles.blob, styles.blob2]} />
 
@@ -40,8 +52,7 @@ export default function WelcomeScreen() {
       <View style={styles.bottom}>
         <Pressable
           style={styles.btnSolid}
-          onPress={() => router.push('/signup')}
-          accessibilityRole="button"
+          onPress={() => router.push('./signup')}
         >
           <Text style={styles.btnSolidText}>
             Créer un compte
@@ -50,8 +61,7 @@ export default function WelcomeScreen() {
 
         <Pressable
           style={styles.btnOutline}
-          onPress={() => router.push('/login')}
-          accessibilityRole="button"
+          onPress={() => router.push('/(auth)/login')}
         >
           <Text style={styles.btnOutlineText}>
             Se connecter
@@ -69,7 +79,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
     paddingHorizontal: 30,
-    paddingTop: 32,
   },
 
   blob: {
@@ -126,7 +135,7 @@ const styles = StyleSheet.create({
     width: '100%',
     zIndex: 2,
     gap: 10,
-    paddingBottom: 32,
+    paddingTop: 20,
   },
 
   btnSolid: {

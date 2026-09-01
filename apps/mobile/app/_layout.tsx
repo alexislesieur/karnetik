@@ -1,7 +1,10 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import { fontsToLoad } from '@/constants/fonts';
+
 import 'react-native-reanimated';
 
 export const unstable_settings = {
@@ -16,48 +19,54 @@ export default function RootLayout() {
   }
 
   return (
-    <>
-      <Stack>
+    <SafeAreaProvider>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
         <Stack.Screen
           name="index"
-          options={{ headerShown: false }}
+          options={{
+            headerShown: false,
+          }}
         />
 
         <Stack.Screen
-          name="welcome"
-          options={{ headerShown: false }}
+          name="(auth)"
+          options={{
+            headerShown: false,
+          }}
         />
 
         <Stack.Screen
-          name="signup"
-          options={{ headerShown: false }}
-        />
-
-        <Stack.Screen
-          name="verify-email"
-          options={{ headerShown: false }}
-        />
-
-        <Stack.Screen
-          name="home"
-          options={{ headerShown: false }}
+          name="(app)"
+          options={{
+            headerShown: false,
+          }}
         />
 
         <Stack.Screen
           name="(tabs)"
-          options={{ headerShown: false }}
+          options={{
+            headerShown: false,
+          }}
         />
 
         <Stack.Screen
           name="modal"
           options={{
             presentation: 'modal',
-            title: 'Modal',
+            headerShown: false,
           }}
         />
       </Stack>
 
-      <StatusBar style="dark" />
-    </>
+      <StatusBar
+        style="dark"
+        translucent
+        backgroundColor="transparent"
+      />
+    </SafeAreaProvider>
   );
 }

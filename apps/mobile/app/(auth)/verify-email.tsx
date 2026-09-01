@@ -37,12 +37,9 @@ export default function VerifyEmailScreen() {
     mode === 'password-reset';
 
   const [code, setCode] = useState('');
-  const [error, setError] = useState<string | null>(
-    null,
-  );
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isResending, setIsResending] =
-    useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
 
@@ -86,7 +83,7 @@ export default function VerifyEmailScreen() {
         code,
       });
 
-      router.replace('/email-success');
+      router.replace('/(auth)/email-success');
     } catch (err) {
       setError(
         err instanceof Error
@@ -153,6 +150,7 @@ export default function VerifyEmailScreen() {
         styles.container,
         {
           paddingTop: insets.top,
+          paddingBottom: insets.bottom,
         },
       ]}
       onPress={Keyboard.dismiss}
@@ -160,18 +158,10 @@ export default function VerifyEmailScreen() {
       <View style={styles.hero}>
         <Pressable
           style={styles.backButton}
-          onPress={() => {
-            Keyboard.dismiss();
-            router.back();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Retour"
+          onPress={() => router.back()}
+          disabled={isLoading}
         >
-          <Svg
-            width={18}
-            height={18}
-            viewBox="0 0 24 24"
-          >
+          <Svg width={18} height={18} viewBox="0 0 24 24">
             <Path
               d="M15 6l-6 6 6 6"
               fill="none"
@@ -186,11 +176,7 @@ export default function VerifyEmailScreen() {
 
       <View style={styles.content}>
         <View style={styles.icon}>
-          <Svg
-            width={34}
-            height={34}
-            viewBox="0 0 24 24"
-          >
+          <Svg width={34} height={34} viewBox="0 0 24 24">
             <Path
               d="M4 4h16v16H4z"
               fill="none"
@@ -217,9 +203,7 @@ export default function VerifyEmailScreen() {
           Entrez le code à 6 chiffres envoyé à
         </Text>
 
-        <Text style={styles.email}>
-          {email}
-        </Text>
+        <Text style={styles.email}>{email}</Text>
 
         <TextInput
           ref={inputRef}
@@ -238,33 +222,26 @@ export default function VerifyEmailScreen() {
           style={styles.digits}
           onPress={() => inputRef.current?.focus()}
         >
-          {Array.from({ length: 6 }).map(
-            (_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.digit,
-                  code.length > index &&
-                    styles.digitFilled,
-                  error &&
-                    styles.digitError,
-                ]}
-              >
-                <Text style={styles.digitText}>
-                  {code[index] ?? ''}
-                </Text>
-              </View>
-            ),
-          )}
+          {Array.from({ length: 6 }).map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.digit,
+                code.length > index &&
+                  styles.digitFilled,
+                error && styles.digitError,
+              ]}
+            >
+              <Text style={styles.digitText}>
+                {code[index] ?? ''}
+              </Text>
+            </View>
+          ))}
         </Pressable>
 
         {error && (
           <View style={styles.errorContainer}>
-            <Svg
-              width={13}
-              height={13}
-              viewBox="0 0 24 24"
-            >
+            <Svg width={13} height={13} viewBox="0 0 24 24">
               <Circle
                 cx="12"
                 cy="12"
@@ -295,9 +272,7 @@ export default function VerifyEmailScreen() {
               styles.verifyButtonDisabled,
           ]}
           onPress={handleVerify}
-          disabled={
-            code.length !== 6 || isLoading
-          }
+          disabled={code.length !== 6 || isLoading}
         >
           <Text style={styles.verifyButtonText}>
             {isLoading
@@ -357,7 +332,7 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 20,
-    backgroundColor: Colors.accentLight,
+    backgroundColor: Colors.accentClair,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
